@@ -100,7 +100,7 @@ export function setupAccount(store,onProfile) {
       $('login-help').textContent=settingsUnlocked?(store.profile?'Room selection and log out are available now.':'Sign in once on this device, then select the room.'):'Enter the PIN to change this tablet’s room number or sign out.';
       return;
     }
-    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit)submit.textContent=signedIn?'Signed in':'Sign in';$('login-help').textContent=signedIn?'You are signed in to this station.':'Sign in once on this device. The session stays signed in until staff sign out.';}
+    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit){submit.hidden=signedIn;submit.textContent='Sign in';}if($('logout'))$('logout').hidden=!signedIn;$('login-help').textContent=signedIn?'You are signed in to this station.':'Sign in once on this device. The session stays signed in until staff sign out.';}
     else if(submit)submit.textContent=store.page==='patient'?'Save room':'Close';
   };
   $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>($('settings-pin')||$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();
