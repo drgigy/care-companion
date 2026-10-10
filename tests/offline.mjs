@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {CareStore,guessCategory,escapeHTML} from '../shared.js';
+import {LiveCompanion} from '../voice.js';
+const memory=new Map();globalThis.localStorage={getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)};globalThis.window={addEventListener(){}};
+const patient=new CareStore('patient'),staff=new CareStore('dashboard');await patient.init(()=>{});await staff.init(()=>{});
+assert.equal(patient.profile.room,'204');
+await patient.create('food','Glass of water','stable-id');await patient.create('food','Glass of water','stable-id');staff.readDemo();assert.equal(staff.items.length,1,'Retry must not duplicate request');
+await assert.rejects(staff.create('food','Unauthorized request'),/room account/);
+await assert.rejects(patient.update('stable-id','completed'),/Staff access/);
+await assert.rejects(staff.update('stable-id','completed'),/status already changed/);
+await staff.update('stable-id','in-progress');await staff.update('stable-id','completed');patient.readDemo();assert.equal(patient.items[0].status,'completed');assert.ok(patient.items[0].completedAt);
+await patient.login('','','305');await patient.create('cleaning','Clean the spill','other-room');staff.readDemo();assert.equal(staff.items.find(r=>r.id==='other-room').room,'305');assert.equal(staff.items.find(r=>r.id==='stable-id').room,'204');
+assert.equal(guessCategory('nurse please'),'nursing');assert.equal(guessCategory('clean the spilled drink'),'cleaning');assert.equal(guessCategory('an extra blanket'),'utilities');assert.equal(guessCategory('a glass of water'),'food');assert.equal(guessCategory('something else'),null);assert.equal(escapeHTML('<img src=x>'),'&lt;img src=x&gt;');
+let calls=0,responses=[];const live=new LiveCompanion(patient,{onText(){},onState(){},onRequest:async()=>{calls++;return {status:'sent'};}});live.session={sendToolResponse:value=>responses.push(value)};
+const event={toolCall:{functionCalls:[{id:'one',name:'request_care',args:{category:'food',summary:'Water'}}]}};await live.handle(event);await live.handle(event);assert.equal(calls,1,'Repeated Live tool ID must not send twice');assert.equal(responses.length,2);
+await live.handle({toolCall:{functionCalls:[{id:'invalid',name:'request_care',args:{category:'bad',summary:'Water'}}]}});assert.equal(calls,1);assert.ok(responses.at(-1).functionResponses[0].response.error);
+let stopped=0;live.sources.add({stop(){stopped++;}});await live.handle({serverContent:{interrupted:true}});assert.equal(stopped,1);assert.equal(live.sources.size,0,'Barge-in must stop queued playback');
+console.log('Passed: room assignment, request retry, role enforcement, forward status transitions, classification, escaping, Live tool deduplication and interruption cleanup.');

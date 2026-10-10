@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn(){return request.auth != null;}
+    function profile(){return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;}
+    function staff(){return signedIn() && profile().role == 'staff';}
+    match /profiles/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      // Profiles are provisioned by an administrator, never by a client.
+      allow write: if false;
+    }
+    match /requests/{id} {
+      allow read: if signedIn() && (staff() || resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn() && profile().role == 'room'
+        && request.resource.data.keys().hasAll(['room','category','summary','status','ownerUid','createdAt','updatedAt','completedAt'])
+        && request.resource.data.keys().hasOnly(['room','category','summary','status','ownerUid','createdAt','updatedAt','completedAt'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.room == profile().room
+        && request.resource.data.category in ['food','utilities','cleaning','nursing']
+        && request.resource.data.summary is string
+        && request.resource.data.summary.size() > 0 && request.resource.data.summary.size() <= 500
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.completedAt == null;
+      allow update: if staff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','completedAt'])
+        && request.resource.data.updatedAt == request.time
+        && ((resource.data.status == 'new' && request.resource.data.status == 'in-progress' && request.resource.data.completedAt == null)
+          || (resource.data.status == 'in-progress' && request.resource.data.status == 'completed' && request.resource.data.completedAt == request.time));
+      allow delete: if false;
+    }
+    match /{document=**}{allow read, write: if false;}
+  }
+}

@@ -1,0 +1,16 @@
+CARE COMPANION — QUICK LOCAL SETUP
+
+See ../HANDOVER.txt for complete destination-account setup and deployment.
+See ../START-HERE.txt for the handover contents.
+
+From this app/ folder:
+  python3 -m http.server 8765 --bind 127.0.0.1
+Open http://localhost:8765/index.html and http://localhost:8765/dashboard.html.
+Use the same browser for demo requests.
+
+Double-click START.command for the local server when Python 3 is available.
+Double-click CHECK.command for offline validation when Node.js 22 is available.
+The app starts in demo mode. Live AI voice needs Firebase and Gemini setup.
+
+No destination Firebase project, account or key has been configured in this copy.
+Do not open the HTML pages directly using file://; modules require an HTTP server.

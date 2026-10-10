@@ -1,0 +1,24 @@
+import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js';
+const store=new CareStore('dashboard');let selected='food',items=[],seen=new Set(),loaded=false,sound=false,audio=null;
+const age=time=>{const mins=Math.max(0,Math.floor((Date.now()-time)/60000));return mins===0?'Just now':mins<60?`${mins} min ago`:`${Math.floor(mins/60)} hr ago`;};
+function clock(){$('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}clock();setInterval(clock,30000);
+function chime(){if(!audio)return;const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.connect(gain);gain.connect(audio.destination);oscillator.frequency.value=650;gain.gain.setValueAtTime(.08,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.6);oscillator.start();oscillator.stop(audio.currentTime+.6);}
+$('sound').onclick=async()=>{try{if(!audio)audio=new AudioContext();await audio.resume();sound=!sound;$('sound').textContent=sound?'Alert sound on':'Enable alert sound';$('sound').setAttribute('aria-pressed',String(sound));if(sound)chime();}catch{toast('Audio alerts are unavailable. New requests still appear on the dashboard.');}};
+function render(){
+  $('new-count').textContent=items.filter(r=>r.status==='new').length;$('progress-count').textContent=items.filter(r=>r.status==='in-progress').length;
+  const today=new Date();today.setHours(0,0,0,0);$('done-count').textContent=items.filter(r=>r.status==='completed'&&r.completedAt>=today.getTime()).length;
+  $('category-tabs').innerHTML=Object.entries(categories).map(([key,value])=>`<button data-category="${key}" class="${selected===key?'selected':''}" aria-pressed="${selected===key}"><span class="tab-icon">${value.icon}</span><span>${value.label} <span class="tab-count">${items.filter(r=>r.category===key&&r.status!=='completed').length}</span></span></button>`).join('');
+  $('category-tabs').querySelectorAll('button').forEach(button=>button.onclick=()=>{selected=button.dataset.category;render();});
+  const filter=$('status-filter').value;const rows=items.filter(r=>r.category===selected&&(filter==='all'||(filter==='active'?r.status!=='completed':r.status===filter)));
+  $('queue-title').textContent=categories[selected].label;$('queue-summary').textContent=`${rows.length} ${rows.length===1?'request':'requests'} · updates automatically`;
+  $('request-list').innerHTML=rows.length?rows.map(r=>`<article class="request-row"><div class="room-number"><small>ROOM</small>${escapeHTML(r.room)}</div><div class="request-detail"><h3>${escapeHTML(r.summary)}</h3><small>${age(r.createdAt)} · ${escapeHTML(new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}</small></div><div><span class="status ${r.status}">${statuses[r.status]}</span></div>${r.status==='completed'?'<span class="text-button">✓ Taken care of</span>':`<button class="${r.status==='new'?'primary':'secondary'}" data-id="${escapeHTML(r.id)}" data-next="${r.status==='new'?'in-progress':'completed'}">${r.status==='new'?'Acknowledge':'Mark complete'}</button>`}</article>`).join(''):`<div class="empty"><span>${categories[selected].icon}</span><h3>${store.profile?'All quiet here':'Staff sign-in required'}</h3><p>${store.profile?'Requests for '+categories[selected].label.toLowerCase()+' will appear here as soon as a patient sends one.':'Connect your staff account to view requests.'}</p></div>`;
+  $('request-list').querySelectorAll('[data-id]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await store.update(button.dataset.id,button.dataset.next);toast(button.dataset.next==='completed'?'Request completed':'Request acknowledged — patient status updated');}catch(error){toast(error.message);button.disabled=false;}});
+}
+$('status-filter').onchange=render;
+store.subscribe(rows=>{
+  const arrivals=rows.filter(r=>!seen.has(r.id)&&r.status==='new');if(loaded&&arrivals.length){const first=arrivals[0];toast(`New request · Room ${first.room} · ${categories[first.category].label}`);if(sound)chime();}
+  seen=new Set(rows.map(r=>r.id));loaded=true;items=rows;render();
+});setInterval(render,30000);
+if(!store.demo)$('demo-banner').hidden=true;
+const initialize=setupAccount(store,(profile,error)=>{if(error)$('dashboard-footnote').textContent='Live updates are interrupted. Check your connection and account access.';else $('dashboard-footnote').textContent='Room numbers come from the tablet’s configured account. Acknowledge a request to let the patient know it’s being handled.';if(!profile){items=[];loaded=false;render();}});
+initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';});

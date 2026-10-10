@@ -1,0 +1,68 @@
+// Continuous Gemini Live audio: microphone streams while model audio plays.
+// Echo cancellation and server-side activity detection allow natural interruption.
+export class LiveCompanion {
+  constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;}
+  async start(){
+    const generation=++this.generation;
+    try{
+      if(!navigator.mediaDevices?.getUserMedia)throw Error('Microphone access requires HTTPS or localhost.');
+      // Create/resume playback from the Start button gesture before asynchronous setup.
+      this.outputContext=new AudioContext({sampleRate:24000});await this.outputContext.resume();
+      this.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      if(this.stopped||generation!==this.generation){this.stream.getTracks().forEach(t=>t.stop());return;}
+      const [{GoogleGenAI},result]=await Promise.all([import('https://esm.sh/@google/genai@1.45.0'),this.store.call('liveToken',{})]);
+      if(this.stopped)return;
+      const {token,model,liveConfig}=result.data;const ai=new GoogleGenAI({apiKey:token,httpOptions:{apiVersion:'v1beta'}});
+      this.session=await ai.live.connect({model,config:liveConfig,callbacks:{
+        onmessage:message=>{this.handle(message).catch(error=>this.callbacks.onError('Conversation error: '+error.message));},
+        onerror:()=>{if(!this.stopped)this.callbacks.onError('The voice connection failed. Please start again.');},
+        onclose:()=>{if(!this.stopped)this.callbacks.onError('The voice session ended. Start a new conversation to reconnect.');}
+      }});
+      if(this.stopped){this.session.close();return;}
+      this.inputContext=new AudioContext();await this.inputContext.audioWorklet.addModule('mic-worklet.js');await this.inputContext.resume();
+      this.microphone=this.inputContext.createMediaStreamSource(this.stream);this.processor=new AudioWorkletNode(this.inputContext,'pcm-capture');
+      this.processor.port.onmessage=event=>{
+        if(this.stopped||this.muted||!this.session)return;
+        const pcm=new Int16Array(event.data.length);for(let i=0;i<pcm.length;i++)pcm[i]=Math.round(Math.max(-1,Math.min(1,event.data[i]))*32767);
+        const bytes=new Uint8Array(pcm.buffer);let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
+        this.session.sendRealtimeInput({audio:{data:btoa(binary),mimeType:`audio/pcm;rate=${this.inputContext.sampleRate}`}});
+      };
+      this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
+      this.session.sendClientContent({turns:[{role:'user',parts:[{text:'The patient pressed Start. Greet them briefly and ask what they need.'}]}],turnComplete:true});
+      this.timeout=setTimeout(()=>{if(!this.stopped)this.callbacks.onError('This conversation has reached its session limit. Please start again.');},9*60*1000);
+      this.callbacks.onState('Listening to you');
+    }catch(error){this.stop();throw error;}
+  }
+  async handle(message){
+    if(this.stopped)return;
+    if(message.goAway){this.callbacks.onError('The voice session is ending. Please start again.');return;}
+    const content=message.serverContent;
+    if(content?.interrupted){this.clearAudio();this.callbacks.onState('Listening to you');}
+    if(content?.outputTranscription?.text){
+      const text=content.outputTranscription.text;this.transcript=(this.transcript||'')+text;
+    }
+    for(const part of content?.modelTurn?.parts||[])if(part.inlineData?.data&&part.inlineData.mimeType?.startsWith('audio/pcm'))this.play(part.inlineData.data);
+    if(content?.turnComplete){if(this.transcript){this.callbacks.onText(this.transcript);this.transcript='';}this.callbacks.onState('Listening to you');}
+    const calls=message.toolCall?.functionCalls||[];
+    for(const call of calls){
+      if(this.stopped)return;let response;
+      if(call.name!=='request_care')response={error:'Unknown tool'};
+      else if(this.processed.has(call.id))response=await this.processed.get(call.id);
+      else {
+        const args=call.args||{};
+        if(!['food','utilities','cleaning','nursing'].includes(args.category)||typeof args.summary!=='string'||!args.summary.trim()||args.summary.length>500)response={error:'Invalid category or summary. Ask the patient to clarify.'};
+        else {const work=this.callbacks.onRequest(args);this.processed.set(call.id,work);response=await work;}
+      }
+      if(!this.stopped)this.session.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response}]});
+    }
+  }
+  play(base64){
+    if(this.stopped)return;const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));const view=new DataView(bytes.buffer),buffer=this.outputContext.createBuffer(1,bytes.length/2,24000),channel=buffer.getChannelData(0);
+    for(let i=0;i<channel.length;i++)channel[i]=view.getInt16(i*2,true)/32768;
+    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>this.sources.delete(source);source.start(time);this.callbacks.onState('Companion is speaking');
+  }
+  clearAudio(){this.sources.forEach(source=>{try{source.stop();}catch{}});this.sources.clear();this.nextPlay=0;}
+  sendText(text){this.session?.sendClientContent({turns:[{role:'user',parts:[{text}]}],turnComplete:true});}
+  toggleMute(){this.muted=!this.muted;this.stream?.getAudioTracks().forEach(track=>track.enabled=!this.muted);if(this.muted)this.session?.sendRealtimeInput({audioStreamEnd:true});this.callbacks.onState(this.muted?'Microphone muted':'Listening to you');return this.muted;}
+  stop(){this.stopped=true;++this.generation;clearTimeout(this.timeout);this.clearAudio();this.stream?.getTracks().forEach(t=>t.stop());this.microphone?.disconnect();this.processor?.disconnect();this.session?.close();this.inputContext?.close().catch(()=>{});this.outputContext?.close().catch(()=>{});this.session=null;}
+}
