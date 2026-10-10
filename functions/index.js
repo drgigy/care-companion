@@ -3,7 +3,7 @@ import {defineSecret,defineString} from 'firebase-functions/params';
 import {initializeApp} from 'firebase-admin/app';
 import {getFirestore,Timestamp} from 'firebase-admin/firestore';
 import {GoogleGenAI} from '@google/genai';
-import {conversationScript,requestTool} from './script.js';
+import {conversationScript,requestTool,endConversationTool} from './script.js';
 initializeApp();const db=getFirestore();const geminiKey=defineSecret('GEMINI_API_KEY');
 const model=defineString('GEMINI_LIVE_MODEL',{default:'gemini-3.8-live'});
 // Set ALLOWED_ORIGINS to the exact production frontend origin at deployment.
@@ -16,7 +16,7 @@ export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInsta
   if(!profile.exists||profile.data().role!=='room'||!profile.data().room)throw new HttpsError('permission-denied','A configured room account is required.');
   const limitRef=db.doc(`voiceLimits/${uid}`);
   await db.runTransaction(async tx=>{const entry=await tx.get(limitRef);const now=Date.now();if(entry.exists&&now-entry.data().lastIssued.toMillis()<15000)throw new HttpsError('resource-exhausted','Please wait 15 seconds before starting another voice session.');tx.set(limitRef,{lastIssued:Timestamp.fromMillis(now)});});
-  const liveConfig={responseModalities:['AUDIO'],inputAudioTranscription:{},outputAudioTranscription:{},systemInstruction:conversationScript,tools:[{functionDeclarations:[requestTool]}]};
+  const liveConfig={responseModalities:['AUDIO'],inputAudioTranscription:{},outputAudioTranscription:{},systemInstruction:conversationScript,tools:[{functionDeclarations:[requestTool,endConversationTool]}]};
   try{
     const ai=new GoogleGenAI({apiKey:geminiKey.value(),httpOptions:{apiVersion:'v1beta'}});
     const token=await ai.authTokens.create({config:{uses:1,expireTime:new Date(Date.now()+10*60000).toISOString(),newSessionExpireTime:new Date(Date.now()+60000).toISOString(),liveConnectConstraints:{model:model.value(),config:liveConfig}}});

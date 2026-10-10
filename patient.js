@@ -27,7 +27,7 @@ async function start(){
     if(store.demo){setSession(true);const greeting='നമസ്കാരം. നിങ്ങൾക്ക് എന്ത് സഹായം വേണം? I can help with food, utilities, cleaning, nursing, or complaints.';bubble(greeting);speak(greeting);}
     else{
       $('start').textContent='Connecting to your companion…';
-      live=new LiveCompanion(store,{onText:text=>{bubble(text);},onState:state=>{$('session-state').textContent=state;},onError:message=>{toast(message);end();},onRequest:async args=>{
+      live=new LiveCompanion(store,{onText:text=>{bubble(text);},onState:state=>{$('session-state').textContent=state;},onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(1200),onRequest:async args=>{
         try{const id=await store.create(args.category,args.summary);toast(`Request sent · ${categories[args.category].label}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved. Tell the patient it was not sent.'};}
       }});
       await live.start();if(!live||live.stopped)throw Error('The voice session closed before it was ready. Please start again.');setSession(true);$('mic').textContent='Mute microphone';$('mode-note').textContent='Voice assistant · microphone is on during your conversation';

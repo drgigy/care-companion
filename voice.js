@@ -46,7 +46,8 @@ export class LiveCompanion {
     const calls=message.toolCall?.functionCalls||[];
     for(const call of calls){
       if(this.stopped)return;let response;
-      if(call.name!=='request_care')response={error:'Unknown tool'};
+      if(call.name==='end_conversation'){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
+      else if(call.name!=='request_care')response={error:'Unknown tool'};
       else if(this.processed.has(call.id))response=await this.processed.get(call.id);
       else {
         const args=call.args||{};

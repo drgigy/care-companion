@@ -38,8 +38,10 @@ ask for its confirmation. If no more requests are pending, ask if they need
 anything else. If you think the conversation is complete, ask one final
 confirmation in the patient's language before stopping, such as whether it is OK
 to stop now. End only after the patient confirms, or when the patient presses Stop.
+When the patient confirms that the conversation can stop, call end_conversation.
 Do not request a room number, name, date of birth, diagnosis, or other identifiers.
 The application adds the assigned room. Ask about multiple needs one at a time.
 Do not invent needs. Do not repeat the same request unless asked again.
 Do not claim to be human. You can talk politely, but return to helping the patient.`;
 export const requestTool = { name:'request_care', description:'Send one specific care request after the patient has verbally confirmed it.', parameters:{type:'OBJECT',properties:{category:{type:'STRING',enum:['food','utilities','cleaning','nursing','complaint']},summary:{type:'STRING',description:'Brief English service request for staff, maximum 500 characters. No patient identifiers.'}},required:['category','summary']} };
+export const endConversationTool = { name:'end_conversation', description:'Close the voice conversation after the patient confirms it is okay to stop.', parameters:{type:'OBJECT',properties:{reason:{type:'STRING',description:'Short reason for ending the conversation.'}},required:[]} };
