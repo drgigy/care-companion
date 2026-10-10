@@ -1,4 +1,4 @@
-// Continuous Gemini Live audio: microphone streams while model audio plays.
+// Continuous live voice audio: microphone streams while model audio plays.
 // Echo cancellation and server-side activity detection allow natural interruption.
 export class LiveCompanion {
   constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;}
@@ -50,7 +50,7 @@ export class LiveCompanion {
       else if(this.processed.has(call.id))response=await this.processed.get(call.id);
       else {
         const args=call.args||{};
-        if(!['food','utilities','cleaning','nursing'].includes(args.category)||typeof args.summary!=='string'||!args.summary.trim()||args.summary.length>500)response={error:'Invalid category or summary. Ask the patient to clarify.'};
+        if(!['food','utilities','cleaning','nursing','complaint'].includes(args.category)||typeof args.summary!=='string'||!args.summary.trim()||args.summary.length>500)response={error:'Invalid category or summary. Ask the patient to clarify.'};
         else {const work=this.callbacks.onRequest(args);this.processed.set(call.id,work);response=await work;}
       }
       if(!this.stopped)this.session.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response}]});

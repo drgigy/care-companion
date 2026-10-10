@@ -3,7 +3,8 @@ export const categories = {
   food: { label:'Food & beverage', icon:'♧', hint:'Meals, snacks & drinks' },
   utilities: { label:'Utilities', icon:'☼', hint:'Comfort & room essentials' },
   cleaning: { label:'Cleaning', icon:'✧', hint:'A fresh, tidy space' },
-  nursing: { label:'Nursing', icon:'♡', hint:'Help from your care team' }
+  nursing: { label:'Nursing', icon:'♡', hint:'Help from your care team' },
+  complaint: { label:'Register complaint', icon:'!', hint:'Share a concern' }
 };
 export const statuses = {new:'Awaiting attention','in-progress':'In progress',completed:'Completed'};
 export const $ = id => document.getElementById(id);
@@ -11,6 +12,7 @@ export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g,c=>({'
 let toastTimer;
 export function toast(message) { $('toast').textContent=message; $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true,6000); }
 export function guessCategory(text) {
+  if (/\b(complaint|complain|issue|problem|unhappy|rude|delay|feedback|concern|report|grievance|service)\b/i.test(text)) return 'complaint';
   if (/\b(nurse|pain|medicine|medication|dizzy|breath|bleed|doctor|sick|iv|injection|hurt)\b/i.test(text)) return 'nursing';
   if (/\b(clean|spill|dirty|trash|rubbish|mop|housekeep|vomit|bin)\b/i.test(text)) return 'cleaning';
   if (/\b(food|water|drink|tea|coffee|meal|snack|hungry|juice|breakfast|lunch|dinner|thirsty)\b/i.test(text)) return 'food';

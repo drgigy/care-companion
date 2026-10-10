@@ -1,4 +1,4 @@
-// Public Firebase web config belongs here. NEVER place a Gemini API key here.
+// Public Firebase web config belongs here. NEVER place a permanent AI API key here.
 export const config = {
   mode: 'firebase',
   firebase: {
