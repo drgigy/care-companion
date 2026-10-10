@@ -8,7 +8,7 @@ initializeApp();const db=getFirestore();const geminiKey=defineSecret('GEMINI_API
 const model=defineString('GEMINI_LIVE_MODEL',{default:'gemini-3.8-live'});
 // Set ALLOWED_ORIGINS to the exact production frontend origin at deployment.
 const origins=defineString('ALLOWED_ORIGINS',{default:'http://localhost:8765'});
-export const liveToken=onCall({secrets:[geminiKey],region:'us-central1',maxInstances:10},async request=>{
+export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInstances:10},async request=>{
   if(!request.auth)throw new HttpsError('unauthenticated','Sign in to the room tablet first.');
   const origin=request.rawRequest.headers.origin;
   if(!origin||!origins.value().split(',').map(s=>s.trim()).includes(origin))throw new HttpsError('permission-denied','This frontend origin is not allowed.');

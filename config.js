@@ -7,5 +7,5 @@ export const config = {
     projectId: 'discharge-project-1475c',
     appId: '1:587312603759:web:b3a873da137f119e96639a'
   },
-  functionsRegion: 'us-central1'
+  functionsRegion: 'asia-south1'
 };
