@@ -1,6 +1,6 @@
 // Public Firebase web config belongs here. NEVER place a Gemini API key here.
 export const config = {
-  mode: 'demo', // Change to 'firebase' after enabling Firestore/Auth/Functions.
+  mode: 'firebase',
   firebase: {
     apiKey: 'AIzaSyBBcVyFacFxUThg6oi0TD7LrO0yi3Yy0K0',
     authDomain: 'discharge-project-1475c.firebaseapp.com',
