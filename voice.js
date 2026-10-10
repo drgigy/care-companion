@@ -28,7 +28,7 @@ export class LiveCompanion {
         this.session.sendRealtimeInput({audio:{data:btoa(binary),mimeType:`audio/pcm;rate=${this.inputContext.sampleRate}`}});
       };
       this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
-      this.session.sendClientContent({turns:[{role:'user',parts:[{text:'The patient pressed Start. Greet them briefly and ask what they need.'}]}],turnComplete:true});
+      this.session.sendClientContent({turns:[{role:'user',parts:[{text:"The patient pressed Start. Greet them briefly in Malayalam and ask what they need. Then mirror the patient's language."}]}],turnComplete:true});
       this.timeout=setTimeout(()=>{if(!this.stopped)this.callbacks.onError('This conversation has reached its session limit. Please start again.');},9*60*1000);
       this.callbacks.onState('Listening to you');
     }catch(error){this.stop();throw error;}

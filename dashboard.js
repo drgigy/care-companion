@@ -7,7 +7,7 @@ $('sound').onclick=async()=>{try{if(!audio)audio=new AudioContext();await audio.
 function render(){
   $('new-count').textContent=items.filter(r=>r.status==='new').length;$('progress-count').textContent=items.filter(r=>r.status==='in-progress').length;
   const today=new Date();today.setHours(0,0,0,0);$('done-count').textContent=items.filter(r=>r.status==='completed'&&r.completedAt>=today.getTime()).length;
-  $('category-tabs').innerHTML=Object.entries(categories).map(([key,value])=>`<button data-category="${key}" class="${selected===key?'selected':''}" aria-pressed="${selected===key}"><span class="tab-icon">${value.icon}</span><span>${value.label} <span class="tab-count">${items.filter(r=>r.category===key&&r.status!=='completed').length}</span></span></button>`).join('');
+  $('category-tabs').innerHTML=Object.entries(categories).map(([key,value])=>{const hasNew=items.some(r=>r.category===key&&r.status==='new');return `<button data-category="${key}" class="${selected===key?'selected':''}${hasNew?' has-new':''}" aria-pressed="${selected===key}"><span class="tab-icon">${value.icon}</span><span>${value.label} <span class="tab-count">${items.filter(r=>r.category===key&&r.status!=='completed').length}</span></span></button>`;}).join('');
   $('category-tabs').querySelectorAll('button').forEach(button=>button.onclick=()=>{selected=button.dataset.category;render();});
   const filter=$('status-filter').value;const rows=items.filter(r=>r.category===selected&&(filter==='all'||(filter==='active'?r.status!=='completed':r.status===filter)));
   $('queue-title').textContent=categories[selected].label;$('queue-summary').textContent=`${rows.length} ${rows.length===1?'request':'requests'} · updates automatically`;
