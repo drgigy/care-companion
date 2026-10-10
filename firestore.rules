@@ -6,8 +6,14 @@ service cloud.firestore {
     function staff(){return signedIn() && profile().role == 'staff';}
     match /profiles/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
-      // Profiles are provisioned by an administrator, never by a client.
-      allow write: if false;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && resource.data.role == 'room'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['room'])
+        && request.resource.data.room is string
+        && request.resource.data.room.size() > 0
+        && request.resource.data.room.size() <= 12;
+      allow create, delete: if false;
     }
     match /requests/{id} {
       allow read: if signedIn() && (staff() || resource.data.ownerUid == request.auth.uid);

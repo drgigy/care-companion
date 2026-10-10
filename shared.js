@@ -57,8 +57,15 @@ export class CareStore {
   subscribe(fn){this.listeners.push(fn);fn(this.items);}
   emit(){this.listeners.forEach(fn=>fn(this.items));}
   readDemo(){const raw=JSON.parse(localStorage.getItem(DEMO_KEY)||'[]');this.items=Array.isArray(raw)?raw.filter(r=>r&&categories[r.category]&&statuses[r.status]&&typeof r.room==='string'&&typeof r.summary==='string'):[];this.items.sort((a,b)=>b.createdAt-a.createdAt);this.emit();}
-  async login(email,password,room){if(this.demo){if(this.page==='patient'){if(!/^[A-Za-z0-9 -]{1,12}$/.test(room))throw Error('Enter a valid room number.');localStorage.setItem(ROOM_KEY,room);this.profile.room=room;}this.onState(this.profile);return;}await this.authSDK.signInWithEmailAndPassword(this.auth,email,password);}
-  async logout(){if(!this.demo)await this.authSDK.signOut(this.auth);}
+  validateRoom(room){if(!/^[A-Za-z0-9 -]{1,12}$/.test(room||''))throw Error('Enter a valid room number.');return room.trim();}
+  async changeRoom(room){
+    room=this.validateRoom(room);
+    if(this.page!=='patient'||this.profile?.role!=='room')throw Error('Connect a room account first.');
+    if(this.demo){localStorage.setItem(ROOM_KEY,room);this.profile.room=room;this.onState(this.profile);this.emit();return;}
+    const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'profiles',this.profile.uid),{room});this.profile.room=room;this.onState(this.profile);this.emit();
+  }
+  async login(email,password,room){if(this.demo){if(this.page==='patient')await this.changeRoom(room);else this.onState(this.profile);return;}await this.authSDK.signInWithEmailAndPassword(this.auth,email,password);}
+  async logout(){if(this.demo&&this.page==='patient'){this.onState(this.profile);return;}if(!this.demo)await this.authSDK.signOut(this.auth);}
   async create(category,summary,id=crypto.randomUUID()){
     if(!this.profile||this.profile.role!=='room')throw Error('Connect a room account first.');
     if(!categories[category]||typeof summary!=='string'||!summary.trim()||summary.length>500)throw Error('Choose a category and a request under 500 characters.');
@@ -81,13 +88,33 @@ export class CareStore {
   }
 }
 export function setupAccount(store,onProfile) {
-  $('account').onclick=()=>$('login-dialog').showModal();$('close-login').onclick=()=>$('login-dialog').close();
-  $('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const submit=e.target.querySelector('button.primary');submit.disabled=true;try{await store.login($('email').value,$('password').value,$('demo-room')?.value.trim());if(store.demo)$('login-dialog').close();$('password').value='';}catch(error){$('login-error').textContent=error.message;}finally{submit.disabled=false;}};
-  $('logout').onclick=async()=>{try{await store.logout();}catch(error){toast(error.message);}};
-  if(!store.demo){$('live-login').hidden=false;$('email').required=true;$('password').required=true;$('login-help').textContent='Sign in once on this device. The session stays signed in until staff sign out.';if($('demo-room-label')){$('demo-room-label').hidden=true;$('demo-room').required=false;}if($('login-submit'))$('login-submit').hidden=false;}
+  let settingsUnlocked=false;
+  const syncSettings=()=>{const roomInput=$('demo-room'),roomLabel=$('demo-room-label'),liveLogin=$('live-login'),submit=$('settings-submit')||$('login-form').querySelector('button.primary');
+    if(roomInput&&store.profile?.room)roomInput.value=store.profile.room;
+    if(store.page==='patient'){
+      if($('settings-pin-label'))$('settings-pin-label').hidden=settingsUnlocked;
+      if(roomLabel){roomLabel.hidden=!settingsUnlocked;roomInput.required=settingsUnlocked;}
+      if(liveLogin){const signedIn=!!store.profile;liveLogin.hidden=!settingsUnlocked||signedIn;$('email').required=settingsUnlocked&&!signedIn;$('password').required=settingsUnlocked&&!signedIn;}
+      $('logout').hidden=store.demo||!store.profile||!settingsUnlocked;
+      if(submit)submit.textContent=settingsUnlocked?(store.profile?'Save room':'Sign in'):'Unlock';
+      $('login-help').textContent=settingsUnlocked?(store.profile?'Room selection and log out are available now.':'Sign in once on this device, then select the room.'):'Enter the PIN to change this tablet’s room number or sign out.';
+      return;
+    }
+    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit)submit.textContent=signedIn?'Signed in':'Sign in';$('login-help').textContent=signedIn?'You are signed in to this station.':'Sign in once on this device. The session stays signed in until staff sign out.';}
+    else if(submit)submit.textContent=store.page==='patient'?'Save room':'Close';
+  };
+  $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>($('settings-pin')||$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();
+  $('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const submit=e.target.querySelector('button.primary');submit.disabled=true;try{
+    if(store.page==='patient'&&!settingsUnlocked){if($('settings-pin').value!=='1234')throw Error('Incorrect PIN.');settingsUnlocked=true;syncSettings();setTimeout(()=>($('demo-room')||$('email'))?.focus(),50);return;}
+    if(store.page==='patient'&&(store.demo||store.profile))await store.changeRoom($('demo-room')?.value.trim());
+    else if(!store.demo&&!store.profile)await store.login($('email').value,$('password').value,$('demo-room')?.value.trim());
+    $('login-dialog').close();if($('password'))$('password').value='';toast(store.page==='patient'?'Room settings saved':'Signed in');
+  }catch(error){$('login-error').textContent=error.message;}finally{submit.disabled=false;syncSettings();}};
+  $('logout').onclick=async()=>{try{await store.logout();$('login-dialog').close();}catch(error){toast(error.message);}};
+  if(!store.demo){$('live-login').hidden=false;$('email').required=true;$('password').required=true;$('login-help').textContent='Sign in once on this device. You can change the room number after sign-in.';}
   return async()=>store.init((profile,error)=>{
     $('connection').textContent=store.demo?'Local demo':error?'Connection error':profile?'Firestore connected':'Sign-in required';
-    $('logout').hidden=store.demo||!profile;
+    syncSettings();
     if(error){$('login-error').textContent=error.message;toast(error.message);}
     if(!store.demo&&!profile)$('login-dialog').showModal();else if(profile)$('login-dialog').close();
     onProfile(profile,error);
