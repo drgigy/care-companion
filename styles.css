@@ -212,6 +212,11 @@ body[data-page=log] header{height:96px;padding:0 22px;gap:14px}
 .log-table td:first-child,.log-table th:first-child{text-align:center;width:44px}
 .log-table td:nth-child(6){min-width:270px;line-height:1.5}
 .log-table tr:hover td{background:#fbfcf8}
+.log-table td.duration-cell{font-weight:700;color:#32443d}
+.log-table td.duration-warning{background:#fff2ca;color:#745112}
+.log-table td.duration-danger{background:#ffe1dc;color:#96362f}
+.log-table tr:hover td.duration-warning{background:#ffe8a3}
+.log-table tr:hover td.duration-danger{background:#ffc9c0}
 .log-empty{text-align:center!important;color:var(--muted);padding:44px!important}
 @media(max-width:1180px){body[data-page=log] header{height:auto;min-height:96px;flex-wrap:wrap;padding:14px 22px}.log-header-stats{max-width:none}.log-header-controls{order:4;min-width:100%;align-items:stretch}.log-header-controls input,.log-header-controls select{min-width:0}.log-layout{height:calc(100vh - 150px)}}
 @media(max-width:760px){body[data-page=log]{overflow:auto;height:auto}body[data-page=log] header{height:auto;min-height:75px;flex-wrap:wrap;padding:14px 18px}.log-header-stats{order:3;min-width:100%;max-width:none}.log-header-controls{order:4;min-width:100%;display:grid;grid-template-columns:1fr 1fr;align-items:end}.log-header-controls label,.log-header-controls select{grid-column:span 2}.log-layout{height:auto;padding:18px}.log-top,.log-filters{align-items:stretch;flex-direction:column}.log-sheet{min-height:520px}}
