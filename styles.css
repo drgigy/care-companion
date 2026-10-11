@@ -114,3 +114,8 @@ body[data-page=dashboard] .dashboard-layout{height:calc(100vh - 94px - 70px);pad
 .brand-copy>span{font:800 21px Manrope,sans-serif;letter-spacing:-.8px;color:var(--green)}
 .brand-copy small{font:700 9px 'DM Sans',sans-serif;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase}
 @media(max-width:760px){.brand-copy>span{font-size:17px}.brand-copy small{font-size:8px}}
+body[data-page=patient] .welcome{display:none}
+body[data-page=patient] .patient-layout{grid-template-columns:minmax(0,1fr);gap:0;padding:26px 32px}
+body[data-page=patient] .companion-card{grid-column:1;padding-left:96px;padding-right:96px}
+@media(max-height:760px) and (min-width:761px){body[data-page=patient] .patient-layout{grid-template-columns:minmax(0,1fr);gap:0;padding:18px 28px}body[data-page=patient] .companion-card{padding-left:72px;padding-right:72px}}
+@media(max-width:760px){body[data-page=patient] .welcome{display:none}body[data-page=patient] .patient-layout{grid-template-columns:1fr;gap:0;padding:14px 16px}body[data-page=patient] .companion-card{grid-column:1;padding:20px 18px}}
