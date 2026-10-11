@@ -1,6 +1,7 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount} from './shared.js';
 import {LiveCompanion} from './voice.js';
 const store=new CareStore('patient');let active=false,recognition=null,live=null,pending=null,pendingResolve=null,starting=false,autoEndTimer=null;
+const serviceLabels={nursing:'Nursing',food:'Food',housekeeping:'Housekeeping',engineering:'Maintenance',ipBilling:'Billing',insurance:'Insurance',it:'IT',guestRelations:'Relations'};
 function bubble(text,user=false){const div=document.createElement('div');div.className='bubble'+(user?' user':'');const label=document.createElement('small');label.textContent=user?'YOU':'COMPANION';div.append(label,document.createTextNode(text));$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight;return div;}
 function speak(text){if(!store.demo||!('speechSynthesis'in window))return;recognition?.abort();speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.rate=.92;speechSynthesis.speak(utterance);}
 function setSession(value){active=value;$('start').hidden=value;$('session-controls').hidden=!value;$('chat').hidden=!value;$('message-form').hidden=!value;document.querySelector('.avatar-zone').classList.toggle('active',value);$('companion-heading').textContent=value?'I’m here. What do you need?':'Hello, I’m your care companion.';$('companion-description').textContent=value?'Tell me in your own words, or choose a service.':'Tap below and tell me what you need. We’ll take it from there.';$('session-state').textContent=value?'Conversation started':'Ready when you are';}
@@ -35,7 +36,7 @@ async function start(){
   }catch(error){end();toast('Could not start: '+error.message);}finally{starting=false;$('start').disabled=!store.profile;}
 }
 $('start').onclick=start;$('end').onclick=end;
-$('services').innerHTML=Object.entries(categories).map(([key,value])=>`<button class="service" data-category="${key}"><span class="service-icon">${value.icon}</span><span><strong>${value.label}</strong><small>${value.hint}</small></span></button>`).join('');
+$('services').innerHTML=Object.entries(categories).map(([key,value])=>`<button class="service" data-category="${key}" aria-label="${value.label}"><span class="service-icon">${value.icon}</span><span><strong>${serviceLabels[key]||value.label}</strong><small>${value.hint}</small></span></button>`).join('');
 $('services').querySelectorAll('button').forEach(button=>button.onclick=async()=>{await start();if(!active)return;const key=button.dataset.category;bubble(`I need help with ${categories[key].label.toLowerCase()}.`,true);bubble('Please describe what you need, then send your request.');$('pending').hidden=false;clearPending();$('message').placeholder=`Describe your ${categories[key].label.toLowerCase()} request…`;$('message').focus();$('message-form').dataset.category=key;});
 $('message-form').onsubmit=e=>{e.preventDefault();const text=$('message').value.trim();if(!text||!active)return;const category=$('message-form').dataset.category;delete $('message-form').dataset.category;$('message').value='';$('message').placeholder='Or type what you need…';if(store.demo)handleDemo(text,category);else{bubble(text,true);live?.sendText((category?`Category requested: ${category}. `:'')+text);}};
 $('mic').onclick=()=>{
@@ -49,6 +50,6 @@ $('mic').onclick=()=>{
   recognition.onend=()=>{recognition=null;$('mic').textContent='Enable demo microphone';$('session-state').textContent='Ready to listen';};recognition.start();
 };
 store.subscribe(items=>{const rows=items.filter(r=>r.room===store.profile?.room).slice(0,3);$('patient-requests').innerHTML=rows.map(r=>`<div class="patient-request"><div>${escapeHTML(r.summary)}<br><small>${categories[r.category].label}</small></div><span class="status ${r.status}">${statuses[r.status]}</span></div>`).join('');});
-const initialize=setupAccount(store,(profile,error)=>{$('room').textContent=profile?'Room '+profile.room:'Room not connected';$('start').disabled=!profile||!!error;$('account').textContent='Settings';if(!active)$('mode-note').textContent=store.demo?'Local demo · voice uses your browser when available':'Secure voice assistant · microphone starts after you tap Start';if(active)end();store.emit();});
+const initialize=setupAccount(store,(profile,error)=>{const roomText=profile?'Room '+profile.room:'Room not connected';$('room').textContent=roomText;$('header-room').textContent=roomText;$('start').disabled=!profile||!!error;$('account').textContent='Settings';if(!active)$('mode-note').textContent=store.demo?'Local demo · voice uses your browser when available':'Secure voice assistant · microphone starts after you tap Start';if(active)end();store.emit();});
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';$('start').disabled=true;});
 window.addEventListener('pagehide',end);
