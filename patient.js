@@ -57,11 +57,12 @@ function parseStaffIdentity(text){const employee=text.match(/(?:employee|emp|sta
 function isYes(text){return /\b(yes|yeah|correct|confirm|confirmed|ok|okay|right|sure)\b/i.test(text);}
 function isNo(text){return /\b(no|wrong|incorrect|change|again|not correct)\b/i.test(text);}
 function loadVoices(){return new Promise(resolve=>{const voices=speechSynthesis.getVoices();if(voices.length){resolve(voices);return;}speechSynthesis.onvoiceschanged=()=>resolve(speechSynthesis.getVoices());setTimeout(()=>resolve(speechSynthesis.getVoices()),900);});}
-function preferredStaffVoice(voices){return voices.find(v=>/samantha|karen|moira|tessa|victoria|ava|allison|susan|zira|google us english|google uk english female/i.test(v.name))||voices.find(v=>/^en-US$/i.test(v.lang)&&!/male|daniel|alex|fred/i.test(v.name))||voices.find(v=>/^en-GB$/i.test(v.lang)&&!/male|daniel|alex|fred/i.test(v.name))||voices.find(v=>/^en-/i.test(v.lang)&&!/male|daniel|alex|fred/i.test(v.name));}
-async function speakStaff(text){toast(text);if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);const voice=preferredStaffVoice(await loadVoices());utterance.lang=voice?.lang||'en-US';utterance.rate=.88;utterance.pitch=1.12;if(voice)utterance.voice=voice;await new Promise(resolve=>{utterance.onend=resolve;utterance.onerror=resolve;speechSynthesis.speak(utterance);setTimeout(resolve,Math.max(1800,text.length*78));});}
+function preferredStaffVoice(voices){return voices.find(v=>/veena|google indian english female|indian english female/i.test(v.name))||voices.find(v=>/^en-IN$/i.test(v.lang)&&!/male|rishi|ravi/i.test(v.name))||voices.find(v=>/samantha|karen|moira|tessa|victoria|ava|allison|susan|zira|google us english|google uk english female/i.test(v.name))||voices.find(v=>/^en-/i.test(v.lang)&&!/male|daniel|alex|fred|rishi|ravi/i.test(v.name));}
+async function speakStaff(text){toast(text);if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);const voice=preferredStaffVoice(await loadVoices());utterance.lang=voice?.lang||'en-IN';utterance.rate=.9;utterance.pitch=1.08;if(voice)utterance.voice=voice;await new Promise(resolve=>{utterance.onend=resolve;utterance.onerror=resolve;speechSynthesis.speak(utterance);setTimeout(resolve,Math.max(1800,text.length*78));});}
 function listenStaff(){return new Promise((resolve,reject)=>{const API=window.SpeechRecognition||window.webkitSpeechRecognition;if(!API){reject(Error('Voice capture is unavailable. Please type the name and employee ID.'));return;}const capture=new API();let settled=false;capture.lang='en-IN';capture.interimResults=false;capture.onresult=e=>{settled=true;capture.stop();resolve(e.results[0][0].transcript);};capture.onerror=()=>{settled=true;reject(Error('Could not capture voice. Please try again or type the details.'));};capture.onend=()=>{if(!settled)reject(Error('I did not hear anything. Please try again or type the details.'));};capture.start();});}
 async function saveStaffCompletion(){await store.completeAtRoom(selectedCompletionId,$('staff-name').value,$('staff-employee-id').value);toast('Request completed');$('staff-dialog').close();$('staff-name').value='';$('staff-employee-id').value='';}
 function readyToSaveStaff(){toast('Thank you. Please check the details and press Save completion.');$('staff-save').disabled=false;$('staff-save').focus();}
+function speakableId(value){return String(value||'').replace(/\s+/g,'').split('').join(' ');}
 async function askStaffIdentity(){
   if(!selectedCompletionId)return;
   $('staff-error').textContent='';$('staff-capture').disabled=true;$('staff-capture').textContent='Listening…';
@@ -71,12 +72,12 @@ async function askStaffIdentity(){
       const identityText=await listenStaff();const parsed=parseStaffIdentity(identityText);
       $('staff-name').value=parsed.name;$('staff-employee-id').value=parsed.employee;
       if(!parsed.name||!parsed.employee){await speakStaff('I could not clearly hear both name and employee ID. Please say them again.');continue;}
-      await speakStaff(`I heard name ${parsed.name}, employee ID ${parsed.employee}. Is that correct?`);
-      const confirmation=await listenStaff();
+      await speakStaff(`I heard name ${parsed.name}, employee ID ${speakableId(parsed.employee)}. Is that correct?`);
+      let confirmation='';try{confirmation=await listenStaff();}catch{toast('Please press Save completion if the details are correct, or edit them if needed.');return;}
       if(isYes(confirmation)){await speakStaff('Thank you.');readyToSaveStaff();return;}
       if(isNo(confirmation)){await speakStaff('Okay. Please say your name and employee ID again.');continue;}
       await speakStaff('Please confirm by saying yes, or say no to try again.');
-      const secondConfirmation=await listenStaff();
+      let secondConfirmation='';try{secondConfirmation=await listenStaff();}catch{toast('Please press Save completion if the details are correct, or edit them if needed.');return;}
       if(isYes(secondConfirmation)){await speakStaff('Thank you.');readyToSaveStaff();return;}
     }
     toast('Please edit the name and employee ID if needed, then press Save completion.');
