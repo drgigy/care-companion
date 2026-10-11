@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aster Care companion · Request log</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="log">
+<header>
+  <div class="brand" aria-label="Aster Care companion powered by WOYZ"><span class="brand-icon">✳</span><span class="brand-copy"><span>Aster Care companion</span><small>powered by WOYZ</small></span><span class="brand-divider"></span><small>REQUEST LOG</small></div>
+  <div class="header-right"><span class="connection" id="connection" hidden>Local demo</span><a class="text-button" href="dashboard.html">Dashboard</a><button class="text-button" id="account">Staff account</button></div>
+</header>
+<main class="log-layout">
+  <section class="log-top">
+    <div>
+      <div class="eyebrow">OVERVIEW</div>
+      <h1>Request log</h1>
+    </div>
+    <div class="log-filters">
+      <label>Date<input id="log-date" type="date"></label>
+      <button class="secondary" id="today">Today</button>
+      <button class="secondary" id="all-dates">All dates</button>
+    </div>
+  </section>
+  <section class="stats log-stats" aria-label="Log summary">
+    <div><small>Total requests</small><strong id="log-total">0</strong><span>For selected date</span></div>
+    <div><small>Awaiting attention</small><strong id="log-new">0</strong><span>Not acknowledged</span></div>
+    <div><small>In progress</small><strong id="log-progress">0</strong><span>Acknowledged</span></div>
+    <div><small>Completed</small><strong id="log-completed">0</strong><span>Closed by bedside staff</span></div>
+  </section>
+  <section class="log-sheet">
+    <div class="queue-toolbar">
+      <div><h2>Overview</h2><span id="log-summary">All requests shown as a spreadsheet.</span></div>
+      <div class="filters">
+        <label class="sr-only" for="log-status">Request status</label>
+        <select id="log-status">
+          <option value="all">All statuses</option>
+          <option value="new">Awaiting attention</option>
+          <option value="in-progress">In progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table">
+        <thead><tr><th>#</th><th>Date</th><th>Time</th><th>Room</th><th>Category</th><th>Request</th><th>Status</th><th>Request time</th><th>Request to acknowledgement</th><th>Request to completion</th><th>Completed by</th></tr></thead>
+        <tbody id="log-rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<dialog id="login-dialog"><form id="login-form"><div class="eyebrow">STAFF ACCESS</div><h2>Sign in to view logs</h2><p id="login-help">In local demo mode, requests are shared only within this browser. No staff sign-in is needed.</p><div id="live-login" hidden><label>Email<input id="email" type="email" autocomplete="username"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label></div><p class="error" id="login-error" role="alert"></p><div class="dialog-actions"><button class="primary" id="login-submit" hidden>Sign in</button><button class="secondary" id="close-login" type="button">Close</button><button class="text-button" id="logout" type="button" hidden>Sign out</button></div></form></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module" src="log.js"></script>
+</body>
+</html>

@@ -54,7 +54,7 @@ export class CareStore {
           if(required==='room'&&(!profile.room||typeof profile.room!=='string'))throw Error('The account needs a valid room assignment.');
           this.profile={...profile,uid:user.uid};
           const ref=db.collection(this.db,'requests');const q=required==='room'?db.query(ref,db.where('ownerUid','==',user.uid)):db.query(ref);
-          this.unsubscribe=db.onSnapshot(q,snapshot=>{this.items=snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),completedAt:d.data().completedAt?.toMillis?.()||null})).sort((a,b)=>b.createdAt-a.createdAt);this.emit();},error=>{this.onState(this.profile,error);});
+          this.unsubscribe=db.onSnapshot(q,snapshot=>{this.items=snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),updatedAt:d.data().updatedAt?.toMillis?.()||Date.now(),completedAt:d.data().completedAt?.toMillis?.()||null})).sort((a,b)=>b.createdAt-a.createdAt);this.emit();},error=>{this.onState(this.profile,error);});
         }
         this.onState(this.profile);
       }catch(error){if(epoch===this.authEpoch)this.onState(null,error);}
