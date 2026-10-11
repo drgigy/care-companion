@@ -8,8 +8,8 @@ function duration(start,end){if(!start||!end)return '—';const seconds=Math.max
 function requestTime(row){return `${dateLabel(row.createdAt)} ${timeLabel(row.createdAt)}`;}
 function employeeId(row){return row.completedByEmployeeId||'—';}
 function filteredRows(){
-  const selectedDate=$('log-date').value,status=$('log-status').value;
-  return items.filter(row=>(!selectedDate||dateKey(row.createdAt)===selectedDate)&&(status==='all'||row.status===status));
+  const selectedDate=$('log-date').value,status=$('log-status').value,category=$('log-category').value;
+  return items.filter(row=>(!selectedDate||dateKey(row.createdAt)===selectedDate)&&(status==='all'||row.status===status)&&(category==='all'||row.category===category));
 }
 function render(){
   const rows=filteredRows();
@@ -20,9 +20,10 @@ function render(){
   $('log-summary').textContent=`${rows.length} ${rows.length===1?'request':'requests'} ${$('log-date').value?'for '+dateLabel(new Date($('log-date').value+'T00:00:00').getTime()):'across all dates'}.`;
   $('log-rows').innerHTML=rows.length?rows.map((row,index)=>{const acknowledgedAt=row.acknowledgedAt||(row.status==='in-progress'?row.updatedAt:null);return `<tr><td>${index+1}</td><td>${dateLabel(row.createdAt)}</td><td>${timeLabel(row.createdAt)}</td><td>${escapeHTML(row.room)}</td><td>${escapeHTML(categories[row.category]?.label||'Request')}</td><td>${escapeHTML(row.summary)}</td><td><span class="status ${row.status}">${statuses[row.status]}</span></td><td>${requestTime(row)}</td><td>${duration(row.createdAt,acknowledgedAt)}</td><td>${duration(row.createdAt,row.completedAt)}</td><td>${escapeHTML(employeeId(row))}</td></tr>`;}).join(''):`<tr><td colspan="11" class="log-empty">${store.profile?'No requests found for this view.':'Staff sign-in required to view logs.'}</td></tr>`;
 }
+$('log-category').innerHTML='<option value="all">All categories</option>'+Object.entries(categories).map(([key,value])=>`<option value="${key}">${escapeHTML(value.label)}</option>`).join('');
 $('today').onclick=()=>{$('log-date').value=dateKey(Date.now());render();};
 $('all-dates').onclick=()=>{$('log-date').value='';render();};
-$('log-date').onchange=render;$('log-status').onchange=render;
+$('log-date').onchange=render;$('log-status').onchange=render;$('log-category').onchange=render;
 $('log-date').value=dateKey(Date.now());
 store.subscribe(rows=>{items=rows;render();});
 const initialize=setupAccount(store,profile=>{if(!profile){items=[];render();}});
