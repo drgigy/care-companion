@@ -23,6 +23,7 @@ jobs:
         run: |
           mkdir public
           cp index.html dashboard.html styles.css config.js shared.js patient.js dashboard.js voice.js mic-worklet.js public/
+          cp -R assets public/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
