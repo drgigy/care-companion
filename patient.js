@@ -53,16 +53,32 @@ $('mic').onclick=()=>{
 };
 function activeRoomRequests(){return store.items.filter(r=>r.room===store.profile?.room&&r.status==='in-progress');}
 function renderStaffRequests(){const rows=activeRoomRequests();if(!rows.some(r=>r.id===selectedCompletionId))selectedCompletionId=rows[0]?.id||null;$('staff-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-complete-id="${escapeHTML(r.id)}" class="${r.id===selectedCompletionId?'selected':''}"><strong>${escapeHTML(categoryLabel(r.category))}</strong><span>${escapeHTML(r.summary)}</span></button>`).join(''):'<p>No acknowledged requests are waiting for bedside completion.</p>';$('staff-request-list').querySelectorAll('[data-complete-id]').forEach(button=>button.onclick=()=>{selectedCompletionId=button.dataset.completeId;renderStaffRequests();});$('staff-capture').disabled=!selectedCompletionId;$('staff-save').disabled=staffUnlocked&&!selectedCompletionId;}
-function parseStaffIdentity(text){const employee=text.match(/(?:employee|emp|id|number)\s*(?:id)?\s*(?:is)?\s*([A-Za-z0-9-]+)/i)?.[1]||'';let name=text.replace(/(?:my name is|name is|i am|i'm)/i,'').replace(/(?:employee|emp|id|number)\s*(?:id)?\s*(?:is)?\s*[A-Za-z0-9-]+/i,'').replace(/[,.]/g,' ').trim();if(!name)name=text.trim();return {name,employee};}
-function askStaffIdentity(){
-  const prompt='Please state your name and employee ID.';
-  toast(prompt);speak(prompt,'english',true);
-  const API=window.SpeechRecognition||window.webkitSpeechRecognition;if(!API){toast('Voice capture is unavailable. Please type the name and employee ID.');return;}
-  const capture=new API();capture.lang='en-IN';capture.interimResults=false;$('staff-capture').disabled=true;$('staff-capture').textContent='Listening…';
-  capture.onresult=e=>{const parsed=parseStaffIdentity(e.results[0][0].transcript);$('staff-name').value=parsed.name;$('staff-employee-id').value=parsed.employee;speak('Thank you.','english',true);};
-  capture.onerror=()=>toast('Could not capture voice. Please type the details.');
-  capture.onend=()=>{$('staff-capture').disabled=!selectedCompletionId;$('staff-capture').textContent='Ask for name and ID';};
-  capture.start();
+function parseStaffIdentity(text){const employee=text.match(/(?:employee|emp|staff)?\s*(?:id|number)\s*(?:is)?\s*([A-Za-z0-9-]+)/i)?.[1]||'';const nameMatch=text.match(/(?:my name is|name is|i am|i'm)\s+(.+?)(?:\s+(?:and\s+)?(?:my\s+)?(?:employee|emp|staff)?\s*(?:id|number)\b|$)/i);let name=(nameMatch?.[1]||text.replace(/(?:employee|emp|staff)?\s*(?:id|number)\s*(?:is)?\s*[A-Za-z0-9-]+/ig,'')).replace(/[,.]/g,' ').trim();return {name,employee};}
+function isYes(text){return /\b(yes|yeah|correct|confirm|confirmed|ok|okay|right|sure)\b/i.test(text);}
+function isNo(text){return /\b(no|wrong|incorrect|change|again|not correct)\b/i.test(text);}
+function speakStaff(text){return new Promise(resolve=>{toast(text);if(!('speechSynthesis'in window)){resolve();return;}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-IN';utterance.rate=.92;utterance.onend=resolve;utterance.onerror=resolve;speechSynthesis.speak(utterance);setTimeout(resolve,Math.max(1800,text.length*75));});}
+function listenStaff(){return new Promise((resolve,reject)=>{const API=window.SpeechRecognition||window.webkitSpeechRecognition;if(!API){reject(Error('Voice capture is unavailable. Please type the name and employee ID.'));return;}const capture=new API();capture.lang='en-IN';capture.interimResults=false;capture.onresult=e=>resolve(e.results[0][0].transcript);capture.onerror=()=>reject(Error('Could not capture voice. Please try again or type the details.'));capture.onend=()=>{};capture.start();});}
+async function saveStaffCompletion(){await store.completeAtRoom(selectedCompletionId,$('staff-name').value,$('staff-employee-id').value);toast('Request completed');$('staff-dialog').close();$('staff-name').value='';$('staff-employee-id').value='';}
+async function askStaffIdentity(){
+  if(!selectedCompletionId)return;
+  $('staff-error').textContent='';$('staff-capture').disabled=true;$('staff-capture').textContent='Listening…';
+  try{
+    for(let attempt=0;attempt<2;attempt++){
+      await speakStaff('Please state your name and employee ID.');
+      const identityText=await listenStaff();const parsed=parseStaffIdentity(identityText);
+      $('staff-name').value=parsed.name;$('staff-employee-id').value=parsed.employee;
+      if(!parsed.name||!parsed.employee){await speakStaff('I could not clearly hear both name and employee ID. Please say them again.');continue;}
+      await speakStaff(`I heard name ${parsed.name}, employee ID ${parsed.employee}. Is that correct?`);
+      const confirmation=await listenStaff();
+      if(isYes(confirmation)){await speakStaff('Thank you.');await saveStaffCompletion();return;}
+      if(isNo(confirmation)){await speakStaff('Okay. Please say your name and employee ID again.');continue;}
+      await speakStaff('Please confirm by saying yes, or say no to try again.');
+      const secondConfirmation=await listenStaff();
+      if(isYes(secondConfirmation)){await speakStaff('Thank you.');await saveStaffCompletion();return;}
+    }
+    toast('Please edit the name and employee ID if needed, then press Save completion.');
+  }catch(error){$('staff-error').textContent=error.message;}
+  finally{$('staff-capture').disabled=!selectedCompletionId;$('staff-capture').textContent='Complete';}
 }
 $('staff').onclick=()=>{if(active)end();staffUnlocked=false;selectedCompletionId=null;$('staff-error').textContent='';$('staff-pin').value='';$('staff-pin-label').hidden=false;$('staff-completion').hidden=true;$('staff-save').textContent='Unlock';$('staff-dialog').showModal();setTimeout(()=>$('staff-pin').focus(),50);};
 $('staff-close').onclick=()=>$('staff-dialog').close();
