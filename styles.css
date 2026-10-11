@@ -124,3 +124,4 @@ body[data-page=patient] .companion-card{grid-column:1;padding-left:96px;padding-
 .staff-request-list button.selected{border-color:var(--green);background:#edf3e7}
 .staff-request-list strong{display:block;font-size:12px;margin-bottom:4px}
 .staff-request-list span,.staff-request-list p{display:block;margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+body[data-page=patient] .patient-requests{display:none}
