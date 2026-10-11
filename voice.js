@@ -57,7 +57,7 @@ export class LiveCompanion {
       else if(this.processed.has(call.id))response=await this.processed.get(call.id);
       else {
         const args=call.args||{};
-        if(!['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations'].includes(args.category)||typeof args.summary!=='string'||!args.summary.trim()||args.summary.length>500)response={error:'Invalid category or summary. Ask the patient to clarify.'};
+        if(!['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations'].includes(args.category)||typeof args.summary!=='string'||!args.summary.trim()||args.summary.length>500||(args.patientLanguage&&!['english','malayalam','other'].includes(args.patientLanguage)))response={error:'Invalid category, summary, or language. Ask the patient to clarify.'};
         else {const work=this.callbacks.onRequest(args);this.processed.set(call.id,work);response=await work;}
       }
       if(!this.stopped)this.session.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response}]});

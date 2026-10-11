@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import {config} from '../config.js';
 import {CareStore,guessCategory,escapeHTML} from '../shared.js';
 import {LiveCompanion} from '../voice.js';
+config.mode='demo';
 const memory=new Map();globalThis.localStorage={getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)};globalThis.window={addEventListener(){}};
 const patient=new CareStore('patient'),staff=new CareStore('dashboard');await patient.init(()=>{});await staff.init(()=>{});
 assert.equal(patient.profile.room,'204');
@@ -8,7 +10,7 @@ await patient.create('food','Glass of water','stable-id');await patient.create('
 await assert.rejects(staff.create('food','Unauthorized request'),/room account/);
 await assert.rejects(patient.update('stable-id','completed'),/Staff access/);
 await assert.rejects(staff.update('stable-id','completed'),/status already changed/);
-await staff.update('stable-id','in-progress');await staff.update('stable-id','completed');patient.readDemo();assert.equal(patient.items[0].status,'completed');assert.ok(patient.items[0].completedAt);
+await staff.update('stable-id','in-progress');await assert.rejects(staff.update('stable-id','completed'),/status already changed/);await patient.completeAtRoom('stable-id','Anu Mathew','EMP42');patient.readDemo();assert.equal(patient.items[0].status,'completed');assert.ok(patient.items[0].completedAt);assert.equal(patient.items[0].completedByName,'Anu Mathew');assert.equal(patient.items[0].completedByEmployeeId,'EMP42');
 await patient.login('','','305');await patient.create('housekeeping','Clean the spill','other-room');staff.readDemo();assert.equal(staff.items.find(r=>r.id==='other-room').room,'305');assert.equal(staff.items.find(r=>r.id==='stable-id').room,'204');
 assert.equal(guessCategory('nurse please'),'nursing');assert.equal(guessCategory('clean the spilled drink'),'housekeeping');assert.equal(guessCategory('AC repair'),'engineering');assert.equal(guessCategory('a glass of water'),'food');assert.equal(guessCategory('IP billing estimate'),'ipBilling');assert.equal(guessCategory('insurance approval'),'insurance');assert.equal(guessCategory('wifi password'),'it');assert.equal(guessCategory('I want to register a complaint'),'guestRelations');assert.equal(guessCategory('something else'),null);assert.equal(escapeHTML('<img src=x>'),'&lt;img src=x&gt;');
 let calls=0,responses=[];const live=new LiveCompanion(patient,{onText(){},onState(){},onRequest:async()=>{calls++;return {status:'sent'};}});live.session={sendToolResponse:value=>responses.push(value)};

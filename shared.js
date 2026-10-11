@@ -72,10 +72,11 @@ export class CareStore {
   }
   async login(email,password,room){if(this.demo){if(this.page==='patient')await this.changeRoom(room);else this.onState(this.profile);return;}await this.authSDK.signInWithEmailAndPassword(this.auth,email,password);}
   async logout(){if(this.demo&&this.page==='patient'){this.onState(this.profile);return;}if(!this.demo)await this.authSDK.signOut(this.auth);}
-  async create(category,summary,id=crypto.randomUUID()){
+  async create(category,summary,id=crypto.randomUUID(),patientLanguage='english'){
     if(!this.profile||this.profile.role!=='room')throw Error('Connect a room account first.');
     if(!categories[category]||typeof summary!=='string'||!summary.trim()||summary.length>500)throw Error('Choose a category and a request under 500 characters.');
-    const request={room:this.profile.room,category,summary:summary.trim(),status:'new',ownerUid:this.profile.uid||'demo-room',createdAt:Date.now(),updatedAt:Date.now(),completedAt:null};
+    if(!['english','malayalam','other'].includes(patientLanguage))patientLanguage='english';
+    const request={room:this.profile.room,category,summary:summary.trim(),patientLanguage,status:'new',ownerUid:this.profile.uid||'demo-room',createdAt:Date.now(),updatedAt:Date.now(),completedAt:null,completedByName:null,completedByEmployeeId:null};
     if(this.demo){this.readDemo();if(!this.items.some(r=>r.id===id)){this.items.push({id,...request});localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}}
     else {const db=this.dbSDK;const ref=db.doc(this.db,'requests',id);
       try{await db.setDoc(ref,{...request,createdAt:db.serverTimestamp(),updatedAt:db.serverTimestamp()});}
@@ -89,8 +90,15 @@ export class CareStore {
   }
   async update(id,status){
     if(this.profile?.role!=='staff')throw Error('Staff access is required.');
-    if(this.demo){this.readDemo();const row=this.items.find(r=>r.id===id);if(!row)throw Error('Request no longer exists.');if(!((row.status==='new'&&status==='in-progress')||(row.status==='in-progress'&&status==='completed')))throw Error('Request status already changed.');row.status=status;row.updatedAt=Date.now();if(status==='completed')row.completedAt=Date.now();localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}
-    else {const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status,updatedAt:db.serverTimestamp(),...(status==='completed'?{completedAt:db.serverTimestamp()}: {})});}
+    if(this.demo){this.readDemo();const row=this.items.find(r=>r.id===id);if(!row)throw Error('Request no longer exists.');if(!(row.status==='new'&&status==='in-progress'))throw Error('Request status already changed.');row.status=status;row.updatedAt=Date.now();localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}
+    else {if(status!=='in-progress')throw Error('Complete the request from the patient room.');const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status,updatedAt:db.serverTimestamp()});}
+  }
+  async completeAtRoom(id,name,employeeId){
+    if(this.profile?.role!=='room')throw Error('Connect a room account first.');
+    name=String(name||'').trim();employeeId=String(employeeId||'').trim();
+    if(!name||!employeeId)throw Error('Enter staff name and employee ID.');
+    if(this.demo){this.readDemo();const row=this.items.find(r=>r.id===id&&r.ownerUid==='demo-room');if(!row)throw Error('Request no longer exists.');if(row.status!=='in-progress')throw Error('Only acknowledged requests can be completed.');row.status='completed';row.updatedAt=Date.now();row.completedAt=Date.now();row.completedByName=name;row.completedByEmployeeId=employeeId;localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}
+    else {const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status:'completed',updatedAt:db.serverTimestamp(),completedAt:db.serverTimestamp(),completedByName:name,completedByEmployeeId:employeeId});}
   }
 }
 export function setupAccount(store,onProfile) {

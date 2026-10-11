@@ -18,22 +18,40 @@ service cloud.firestore {
     match /requests/{id} {
       allow read: if signedIn() && (staff() || resource.data.ownerUid == request.auth.uid);
       allow create: if signedIn() && profile().role == 'room'
-        && request.resource.data.keys().hasAll(['room','category','summary','status','ownerUid','createdAt','updatedAt','completedAt'])
-        && request.resource.data.keys().hasOnly(['room','category','summary','status','ownerUid','createdAt','updatedAt','completedAt'])
+        && request.resource.data.keys().hasAll(['room','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','completedAt','completedByName','completedByEmployeeId'])
+        && request.resource.data.keys().hasOnly(['room','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','completedAt','completedByName','completedByEmployeeId'])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.room == profile().room
         && request.resource.data.category in ['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations']
+        && request.resource.data.patientLanguage in ['english','malayalam','other']
         && request.resource.data.summary is string
         && request.resource.data.summary.size() > 0 && request.resource.data.summary.size() <= 500
         && request.resource.data.status == 'new'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
-        && request.resource.data.completedAt == null;
+        && request.resource.data.completedAt == null
+        && request.resource.data.completedByName == null
+        && request.resource.data.completedByEmployeeId == null;
       allow update: if staff()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','completedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
         && request.resource.data.updatedAt == request.time
-        && ((resource.data.status == 'new' && request.resource.data.status == 'in-progress' && request.resource.data.completedAt == null)
-          || (resource.data.status == 'in-progress' && request.resource.data.status == 'completed' && request.resource.data.completedAt == request.time));
+        && resource.data.status == 'new'
+        && request.resource.data.status == 'in-progress'
+        && request.resource.data.completedAt == null;
+      allow update: if signedIn()
+        && profile().role == 'room'
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','completedAt','completedByName','completedByEmployeeId'])
+        && request.resource.data.updatedAt == request.time
+        && resource.data.status == 'in-progress'
+        && request.resource.data.status == 'completed'
+        && request.resource.data.completedAt == request.time
+        && request.resource.data.completedByName is string
+        && request.resource.data.completedByName.size() > 0
+        && request.resource.data.completedByName.size() <= 80
+        && request.resource.data.completedByEmployeeId is string
+        && request.resource.data.completedByEmployeeId.size() > 0
+        && request.resource.data.completedByEmployeeId.size() <= 40;
       allow delete: if false;
     }
     match /{document=**}{allow read, write: if false;}

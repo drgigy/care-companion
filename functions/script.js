@@ -35,8 +35,10 @@ clarifying question only if the request cannot be categorized or understood.
 Wait for the patient's explicit agreement for that specific request before
 calling request_care. They do not need to tap a send button.
 The request_care summary must always be written in English for the staff
-dashboard, even when the patient speaks Malayalam. Keep the spoken confirmation
-in the patient's language; translate only the tool summary.
+dashboard, even when the patient speaks Malayalam. Set patientLanguage to
+malayalam when the patient's request or confirmation is in Malayalam, english
+when it is in English, and other only when neither applies. Keep the spoken
+confirmation in the patient's language; translate only the tool summary.
 Only say a request was sent after the tool returns status sent. If cancelled,
 acknowledge that nothing was sent. If there is an error, say it was not sent.
 After a request is successfully sent, briefly confirm it in the patient's
@@ -50,5 +52,5 @@ Do not request a room number, name, date of birth, diagnosis, or other identifie
 The application adds the assigned room. Ask about multiple needs one at a time.
 Do not invent needs. Do not repeat the same request unless asked again.
 Do not claim to be human. You can talk politely, but return to helping the patient.`;
-export const requestTool = { name:'request_care', description:'Send one specific care request after the patient has verbally confirmed it.', parameters:{type:'OBJECT',properties:{category:{type:'STRING',enum:['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations']},summary:{type:'STRING',description:'Brief English service request for staff, maximum 500 characters. No patient identifiers.'}},required:['category','summary']} };
+export const requestTool = { name:'request_care', description:'Send one specific care request after the patient has verbally confirmed it.', parameters:{type:'OBJECT',properties:{category:{type:'STRING',enum:['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations']},summary:{type:'STRING',description:'Brief English service request for staff, maximum 500 characters. No patient identifiers.'},patientLanguage:{type:'STRING',enum:['english','malayalam','other'],description:'Language the patient used for the request and confirmation.'}},required:['category','summary','patientLanguage']} };
 export const endConversationTool = { name:'end_conversation', description:'Close the voice conversation after the patient confirms it is okay to stop.', parameters:{type:'OBJECT',properties:{reason:{type:'STRING',description:'Short reason for ending the conversation.'}},required:[]} };

@@ -1,26 +1,27 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount} from './shared.js';
 import {LiveCompanion} from './voice.js';
-const store=new CareStore('patient');let active=false,recognition=null,live=null,pending=null,pendingResolve=null,starting=false,autoEndTimer=null;
+const store=new CareStore('patient');let active=false,recognition=null,live=null,pending=null,pendingResolve=null,starting=false,autoEndTimer=null,requestLoaded=false,requestState=new Map(),staffUnlocked=false,selectedCompletionId=null;
 const serviceLabels={nursing:'Nursing',food:'Food',housekeeping:'Housekeeping',engineering:'Maintenance',ipBilling:'Billing',insurance:'Insurance',it:'IT',guestRelations:'Relations'};
 function bubble(text,user=false){const div=document.createElement('div');div.className='bubble'+(user?' user':'');const label=document.createElement('small');label.textContent=user?'YOU':'COMPANION';div.append(label,document.createTextNode(text));$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight;return div;}
-function speak(text){if(!store.demo||!('speechSynthesis'in window))return;recognition?.abort();speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.rate=.92;speechSynthesis.speak(utterance);}
+function detectLanguage(text){return /[\u0D00-\u0D7F]/.test(text)?'malayalam':'english';}
+function speak(text,language='english',force=false){if((!force&&!store.demo)||!('speechSynthesis'in window))return;recognition?.abort();speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.rate=.92;utterance.lang=language==='malayalam'?'ml-IN':'en-IN';speechSynthesis.speak(utterance);}
 function setSession(value){active=value;$('start').hidden=value;$('session-controls').hidden=!value;$('chat').hidden=!value;$('message-form').hidden=true;document.querySelector('.avatar-zone').classList.toggle('active',value);$('companion-heading').textContent=value?'I’m here. What do you need?':'Hello, I’m your care companion.';$('companion-description').textContent=value?'Tell me in your own words, or choose a service.':'Tap below and tell me what you need. We’ll take it from there.';$('session-state').textContent=value?'Conversation started':'Ready when you are';}
 function clearPending(result={cancelled:true}){pendingResolve?.(result);pendingResolve=null;pending=null;$('pending').hidden=true;$('pending').replaceChildren();}
 function scheduleAutoEnd(delay=5000){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(()=>{toast('Conversation ended. Press Start Conversation for a new request.');end();},delay);}
 function end(){starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;recognition?.abort();live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();clearPending();$('chat').replaceChildren();$('message').value='';setSession(false);$('mode-note').textContent=store.demo?'Local demo · voice uses your browser when available':'Secure voice assistant · microphone starts after you tap Start';$('start').disabled=!store.profile;$('start').innerHTML='<span>◉</span> Start a conversation <span>→</span>';}
-function showConfirmation(category,summary,requestId){
-  clearPending();pending={category,summary,id:requestId||crypto.randomUUID()};$('pending').hidden=false;
+function showConfirmation(category,summary,requestId,patientLanguage='english'){
+  clearPending();pending={category,summary,id:requestId||crypto.randomUUID(),patientLanguage};$('pending').hidden=false;
   $('pending').innerHTML=`<h3>Send this request to your care team?</h3><p>${escapeHTML(summary)}</p><div class="category-options">${Object.entries(categories).map(([key,value])=>`<button type="button" data-category="${key}" class="${category===key?'selected':''}" aria-pressed="${category===key}">${value.label}</button>`).join('')}</div><button class="primary" id="confirm-request">Send request</button> <button class="text-button" id="cancel-request">Cancel</button>`;
   $('confirm-request').disabled=!category;
   $('pending').querySelectorAll('[data-category]').forEach(button=>button.onclick=()=>{pending.category=button.dataset.category;$('pending').querySelectorAll('[data-category]').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',String(b===button));});$('confirm-request').disabled=false;});
   $('confirm-request').onclick=async()=>{
     const current=pending;const button=$('confirm-request');button.disabled=true;button.textContent='Sending…';$('cancel-request').disabled=true;
-    try{const id=await store.create(current.category,current.summary,current.id);const message=`Your ${categories[current.category].label.toLowerCase()} request has been sent for Room ${store.profile.room}.`;bubble(message);speak(message);toast('Request sent to the care team');clearPending({requestId:id,status:'sent'});}
+    try{const id=await store.create(current.category,current.summary,current.id,current.patientLanguage);const message=`Your ${categories[current.category].label.toLowerCase()} request has been sent for Room ${store.profile.room}.`;bubble(message);speak(message,current.patientLanguage);toast('Request sent to the care team');clearPending({requestId:id,status:'sent'});}
     catch(error){toast('Request was not sent. '+error.message);button.disabled=false;button.textContent='Try again';$('cancel-request').disabled=false;}
   };
   $('cancel-request').onclick=()=>{clearPending();bubble('No problem. That request has not been sent.');};
 }
-function handleDemo(text,chosen){bubble(text,true);const category=chosen||guessCategory(text);const message=category?`I can pass that to the ${categories[category].label.toLowerCase()} team. Please confirm your request below.`:'Which team would you like to send this to? Choose a category below.';bubble(message);speak(message);showConfirmation(category,text);}
+function handleDemo(text,chosen){bubble(text,true);const patientLanguage=detectLanguage(text);const category=chosen||guessCategory(text);const message=category?`I can pass that to the ${categories[category].label.toLowerCase()} team. Please confirm your request below.`:'Please tell me what you need, and I will send it to the right team.';bubble(message);speak(message,patientLanguage);if(category)showConfirmation(category,text,null,patientLanguage);}
 async function start(){
   if(active||starting)return;if(!store.profile){$('login-dialog').showModal();return;}
   starting=true;$('start').disabled=true;
@@ -29,7 +30,7 @@ async function start(){
     else{
       setSession(true);$('mic').textContent='Preparing microphone…';$('end').textContent='Stop conversation';
       live=new LiveCompanion(store,{onText:text=>{bubble(text);},onState:state=>{$('session-state').textContent=state;},onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(1200),onRequest:async args=>{
-        try{const id=await store.create(args.category,args.summary);toast(`Request sent · ${categories[args.category].label}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved. Tell the patient it was not sent.'};}
+        try{const id=await store.create(args.category,args.summary,crypto.randomUUID(),args.patientLanguage);toast(`Request sent · ${categories[args.category].label}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved. Tell the patient it was not sent.'};}
       }});
       await live.start();if(!live||live.stopped)throw Error('The voice session closed before it was ready. Please start again.');$('mic').textContent='Mute microphone';$('mode-note').textContent='Voice assistant · microphone is on during your conversation';
     }
@@ -49,7 +50,24 @@ $('mic').onclick=()=>{
   recognition.onerror=e=>toast(e.error==='not-allowed'?'Microphone permission was denied. You can type your request.':'Voice input stopped. Try again or type your request.');
   recognition.onend=()=>{recognition=null;$('mic').textContent='Enable demo microphone';$('session-state').textContent='Ready to listen';};recognition.start();
 };
-store.subscribe(items=>{const rows=items.filter(r=>r.room===store.profile?.room).slice(0,3);$('patient-requests').innerHTML=rows.map(r=>`<div class="patient-request"><div>${escapeHTML(r.summary)}<br><small>${categories[r.category].label}</small></div><span class="status ${r.status}">${statuses[r.status]}</span></div>`).join('');});
+function activeRoomRequests(){return store.items.filter(r=>r.room===store.profile?.room&&r.status==='in-progress');}
+function renderStaffRequests(){const rows=activeRoomRequests();if(!rows.some(r=>r.id===selectedCompletionId))selectedCompletionId=rows[0]?.id||null;$('staff-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-complete-id="${escapeHTML(r.id)}" class="${r.id===selectedCompletionId?'selected':''}"><strong>${escapeHTML(categories[r.category].label)}</strong><span>${escapeHTML(r.summary)}</span></button>`).join(''):'<p>No acknowledged requests are waiting for bedside completion.</p>';$('staff-request-list').querySelectorAll('[data-complete-id]').forEach(button=>button.onclick=()=>{selectedCompletionId=button.dataset.completeId;renderStaffRequests();});$('staff-capture').disabled=!selectedCompletionId;$('staff-save').disabled=staffUnlocked&&!selectedCompletionId;}
+function parseStaffIdentity(text){const employee=text.match(/(?:employee|emp|id|number)\s*(?:id)?\s*(?:is)?\s*([A-Za-z0-9-]+)/i)?.[1]||'';let name=text.replace(/(?:my name is|name is|i am|i'm)/i,'').replace(/(?:employee|emp|id|number)\s*(?:id)?\s*(?:is)?\s*[A-Za-z0-9-]+/i,'').replace(/[,.]/g,' ').trim();if(!name)name=text.trim();return {name,employee};}
+function askStaffIdentity(){
+  const prompt='Please state your name and employee ID.';
+  toast(prompt);speak(prompt,'english',true);
+  const API=window.SpeechRecognition||window.webkitSpeechRecognition;if(!API){toast('Voice capture is unavailable. Please type the name and employee ID.');return;}
+  const capture=new API();capture.lang='en-IN';capture.interimResults=false;$('staff-capture').disabled=true;$('staff-capture').textContent='Listening…';
+  capture.onresult=e=>{const parsed=parseStaffIdentity(e.results[0][0].transcript);$('staff-name').value=parsed.name;$('staff-employee-id').value=parsed.employee;speak('Thank you.','english',true);};
+  capture.onerror=()=>toast('Could not capture voice. Please type the details.');
+  capture.onend=()=>{$('staff-capture').disabled=!selectedCompletionId;$('staff-capture').textContent='Ask for name and ID';};
+  capture.start();
+}
+$('staff').onclick=()=>{if(active)end();staffUnlocked=false;selectedCompletionId=null;$('staff-error').textContent='';$('staff-pin').value='';$('staff-pin-label').hidden=false;$('staff-completion').hidden=true;$('staff-save').textContent='Unlock';$('staff-dialog').showModal();setTimeout(()=>$('staff-pin').focus(),50);};
+$('staff-close').onclick=()=>$('staff-dialog').close();
+$('staff-capture').onclick=askStaffIdentity;
+$('staff-form').onsubmit=async e=>{e.preventDefault();$('staff-error').textContent='';const submit=$('staff-save');submit.disabled=true;try{if(!staffUnlocked){if($('staff-pin').value!=='1234')throw Error('Incorrect PIN.');staffUnlocked=true;$('staff-pin-label').hidden=true;$('staff-completion').hidden=false;submit.textContent='Save completion';renderStaffRequests();return;}await store.completeAtRoom(selectedCompletionId,$('staff-name').value,$('staff-employee-id').value);toast('Request completed');$('staff-dialog').close();$('staff-name').value='';$('staff-employee-id').value='';}catch(error){$('staff-error').textContent=error.message;}finally{submit.disabled=false;if(staffUnlocked)renderStaffRequests();}};
+store.subscribe(items=>{const rows=items.filter(r=>r.room===store.profile?.room).slice(0,3);for(const r of rows){const previous=requestState.get(r.id);if(requestLoaded&&previous==='new'&&r.status==='in-progress'){const language=r.patientLanguage||'english';const message=language==='malayalam'?'നിങ്ങളുടെ അഭ്യർത്ഥന സ്റ്റാഫ് അംഗീകരിച്ചു.':'Your request has been acknowledged.';toast(message);speak(message,language,true);}}requestState=new Map(items.map(r=>[r.id,r.status]));requestLoaded=true;$('patient-requests').innerHTML=rows.map(r=>`<div class="patient-request"><div>${escapeHTML(r.summary)}<br><small>${categories[r.category].label}</small></div><span class="status ${r.status}">${statuses[r.status]}</span></div>`).join('');if(staffUnlocked)renderStaffRequests();});
 const initialize=setupAccount(store,(profile,error)=>{const roomText=profile?'Room '+profile.room:'Room not connected';$('room').textContent=roomText;$('header-room').textContent=roomText;$('start').disabled=!profile||!!error;$('account').textContent='Settings';if(profile&&!store.demo)LiveCompanion.preload();if(!active)$('mode-note').textContent=store.demo?'Local demo · voice uses your browser when available':'Secure voice assistant · microphone starts after you tap Start';if(active)end();store.emit();});
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';$('start').disabled=true;});
 window.addEventListener('pagehide',end);

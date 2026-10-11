@@ -119,3 +119,8 @@ body[data-page=patient] .patient-layout{grid-template-columns:minmax(0,1fr);gap:
 body[data-page=patient] .companion-card{grid-column:1;padding-left:96px;padding-right:96px}
 @media(max-height:760px) and (min-width:761px){body[data-page=patient] .patient-layout{grid-template-columns:minmax(0,1fr);gap:0;padding:18px 28px}body[data-page=patient] .companion-card{padding-left:72px;padding-right:72px}}
 @media(max-width:760px){body[data-page=patient] .welcome{display:none}body[data-page=patient] .patient-layout{grid-template-columns:1fr;gap:0;padding:14px 16px}body[data-page=patient] .companion-card{grid-column:1;padding:20px 18px}}
+.staff-request-list{display:grid;gap:8px;margin:12px 0}
+.staff-request-list button{border:1px solid var(--line);background:white;border-radius:10px;padding:11px;text-align:left;color:var(--ink)}
+.staff-request-list button.selected{border-color:var(--green);background:#edf3e7}
+.staff-request-list strong{display:block;font-size:12px;margin-bottom:4px}
+.staff-request-list span,.staff-request-list p{display:block;margin:0;color:var(--muted);font-size:12px;line-height:1.45}
