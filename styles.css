@@ -156,7 +156,7 @@ body[data-page=patient] #session-controls{position:absolute;left:7.1vw;top:61.2v
 body[data-page=patient][data-theme=night] #session-controls{left:50%;top:74.5vh;transform:translateX(-50%)}
 body[data-page=patient] .chat,body[data-page=patient] .pending{position:absolute;left:7.1vw;top:72vh;width:min(520px,86vw);max-height:22vh;overflow:auto;background:#ffffffd9;border:1px solid #b8d9f5;border-radius:18px;padding:14px;backdrop-filter:blur(10px)}
 body[data-page=patient][data-theme=night] .chat,body[data-page=patient][data-theme=night] .pending{left:50%;top:84vh;transform:translateX(-50%);background:#101d3acc;border-color:#ffe58f66;color:#ffecc0}
-body[data-page=patient] footer{position:fixed;left:0;right:0;bottom:28px;display:block;margin:0;padding:0;border:0;text-align:center;z-index:2;font:800 11px Manrope,sans-serif;color:#3f84c7;letter-spacing:.3px}
+body[data-page=patient] footer{position:fixed;right:34px;bottom:28px;display:block;margin:0;padding:0;border:0;text-align:right;z-index:2;font:800 11px Manrope,sans-serif;color:#3f84c7;letter-spacing:.3px}
 body[data-page=patient][data-theme=night] footer{color:#c7aa68}
 body[data-page=patient] footer small{font:800 8px 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:2px;opacity:.8}
 body[data-page=patient] footer a{display:none}
