@@ -1,7 +1,7 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js';
 const store=new CareStore('dashboard');let selected='nursing',items=[],seen=new Set(),loaded=false,sound=false,audio=null;
 const age=time=>{const mins=Math.max(0,Math.floor((Date.now()-time)/60000));return mins===0?'Just now':mins<60?`${mins} min ago`:`${Math.floor(mins/60)} hr ago`;};
-function clock(){$('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}clock();setInterval(clock,30000);
+function clock(){const target=$('clock');if(target)target.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}clock();setInterval(clock,30000);
 function chime(){if(!audio)return;const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.connect(gain);gain.connect(audio.destination);oscillator.frequency.value=650;gain.gain.setValueAtTime(.08,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.6);oscillator.start();oscillator.stop(audio.currentTime+.6);}
 $('sound').onclick=async()=>{try{if(!audio)audio=new AudioContext();await audio.resume();sound=!sound;$('sound').textContent=sound?'Alert sound on':'Enable alert sound';$('sound').setAttribute('aria-pressed',String(sound));if(sound)chime();}catch{toast('Audio alerts are unavailable. New requests still appear on the dashboard.');}};
 function render(){

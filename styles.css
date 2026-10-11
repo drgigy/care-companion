@@ -91,3 +91,21 @@ body[data-page=patient] .room-label,body[data-page=patient] .urgent-note{display
 body[data-page=patient] .companion-card{grid-column:2;padding-left:80px;padding-right:80px}
 @media(max-height:760px) and (min-width:761px){body[data-page=patient] .patient-layout{grid-template-columns:92px minmax(0,1fr);gap:20px;padding:18px 28px}body[data-page=patient] .companion-card{padding-left:68px;padding-right:68px}body[data-page=patient] .top-help{font-size:13px}}
 @media(max-width:760px){body[data-page=patient] header{height:auto;min-height:75px;padding:12px 16px;align-items:flex-start;gap:10px;flex-wrap:wrap}body[data-page=patient] .top-room-status{order:3;flex-basis:100%;justify-content:flex-start;gap:10px}body[data-page=patient] .top-room-status #header-room{font-size:15px}body[data-page=patient] .top-help{font-size:12px;white-space:normal;line-height:1.35}body[data-page=patient] .patient-layout{grid-template-columns:1fr;padding:14px 16px}body[data-page=patient] .services{grid-column:auto;grid-row:auto;width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:0}body[data-page=patient] .companion-card{grid-column:auto;padding:20px 18px}}
+body[data-page=patient] .top-help{color:#b3261e}
+body[data-page=dashboard] .dashboard-layout{grid-template-rows:auto auto 1fr auto}
+body[data-page=dashboard] .stats{grid-template-columns:repeat(3,1fr)}
+body[data-page=dashboard] .stats>div:nth-child(3){border-right:0}
+@media(max-width:760px){body[data-page=dashboard] .stats{grid-template-columns:1fr 1fr 1fr;margin:12px 0}body[data-page=dashboard] .stats>div{border-bottom:0!important;border-right:1px solid var(--line)}body[data-page=dashboard] .stats>div:nth-child(3){border-right:0}}
+body[data-page=dashboard] header{padding:0 3%;gap:18px}
+body[data-page=dashboard] .brand{flex:0 0 auto}
+body[data-page=dashboard] .header-right{flex:0 0 auto}
+body[data-page=dashboard] .top-stats{flex:1;margin:0;min-height:0;border:0;border-radius:0;background:transparent;grid-template-columns:repeat(3,minmax(120px,1fr));gap:10px;overflow:visible}
+body[data-page=dashboard] .top-stats>div{border:1px solid var(--line);border-radius:12px;background:white;padding:8px 12px}
+body[data-page=dashboard] .top-stats small{font-size:9px}
+body[data-page=dashboard] .top-stats strong{font-size:21px;margin:1px 0}
+body[data-page=dashboard] .top-stats span{font-size:8px}
+body[data-page=dashboard] .dashboard-tabs{position:static;display:grid;grid-template-columns:repeat(8,1fr);padding:8px 3%;box-shadow:0 10px 24px #233b3810}
+body[data-page=dashboard] .dashboard-tabs button{min-height:52px}
+body[data-page=dashboard] .dashboard-layout{height:calc(100vh - 94px - 70px);padding-top:14px;grid-template-rows:auto 1fr auto}
+@media(max-height:760px) and (min-width:761px){body[data-page=dashboard] .dashboard-layout{height:calc(100vh - 78px - 64px)}body[data-page=dashboard] .dashboard-tabs button{min-height:46px}body[data-page=dashboard] .top-stats>div{padding:6px 10px}body[data-page=dashboard] .top-stats strong{font-size:18px}}
+@media(max-width:760px){body[data-page=dashboard] header{height:auto;min-height:75px;padding:10px 16px;align-items:flex-start;flex-wrap:wrap}body[data-page=dashboard] .top-stats{order:3;flex-basis:100%;grid-template-columns:repeat(3,1fr);gap:6px}body[data-page=dashboard] .top-stats>div{padding:7px 8px}body[data-page=dashboard] .top-stats strong{font-size:18px}body[data-page=dashboard] .dashboard-tabs{grid-template-columns:repeat(4,1fr);padding:8px;gap:5px}body[data-page=dashboard] .dashboard-layout{height:auto;padding-top:12px}}
