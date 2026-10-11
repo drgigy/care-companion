@@ -22,7 +22,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['room','category','summary','status','ownerUid','createdAt','updatedAt','completedAt'])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.room == profile().room
-        && request.resource.data.category in ['food','utilities','cleaning','nursing','complaint']
+        && request.resource.data.category in ['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations']
         && request.resource.data.summary is string
         && request.resource.data.summary.size() > 0 && request.resource.data.summary.size() <= 500
         && request.resource.data.status == 'new'

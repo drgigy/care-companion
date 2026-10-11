@@ -1,10 +1,13 @@
 import { config } from './config.js';
 export const categories = {
-  food: { label:'Food & beverage', icon:'♧', hint:'Meals, snacks & drinks' },
-  utilities: { label:'Utilities', icon:'☼', hint:'Comfort & room essentials' },
-  cleaning: { label:'Cleaning', icon:'✧', hint:'A fresh, tidy space' },
   nursing: { label:'Nursing', icon:'♡', hint:'Help from your care team' },
-  complaint: { label:'Register complaint', icon:'!', hint:'Share a concern' }
+  food: { label:'Food & beverage', icon:'♧', hint:'Meals, snacks & drinks' },
+  housekeeping: { label:'Housekeeping', icon:'✧', hint:'Room cleaning & linens' },
+  engineering: { label:'Engineering & maintenance', icon:'⚙', hint:'Room fixtures & utilities' },
+  ipBilling: { label:'IP billing', icon:'₹', hint:'Current bill & estimates' },
+  insurance: { label:'Insurance', icon:'□', hint:'Coverage & claim queries' },
+  it: { label:'IT', icon:'⌁', hint:'Wi-Fi, TV & device support' },
+  guestRelations: { label:'Guest relations', icon:'!', hint:'Feedback & concerns' }
 };
 export const statuses = {new:'Awaiting attention','in-progress':'In progress',completed:'Completed'};
 export const $ = id => document.getElementById(id);
@@ -12,11 +15,14 @@ export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g,c=>({'
 let toastTimer;
 export function toast(message) { $('toast').textContent=message; $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true,6000); }
 export function guessCategory(text) {
-  if (/\b(complaint|complain|issue|problem|unhappy|rude|delay|feedback|concern|report|grievance|service)\b/i.test(text)) return 'complaint';
+  if (/\b(guest relation|complaint|complain|issue|problem|unhappy|rude|delay|feedback|concern|report|grievance|service)\b/i.test(text)) return 'guestRelations';
+  if (/\b(insurance|claim|cashless|approval|preauth|pre-auth|tpa|policy|coverage)\b/i.test(text)) return 'insurance';
+  if (/\b(bill|billing|estimate|advance|deposit|payment|charge|invoice|ip bill|ip billing)\b/i.test(text)) return 'ipBilling';
+  if (/\b(wifi|wi-fi|internet|tv|television|phone|remote not working|password|network|it)\b/i.test(text)) return 'it';
+  if (/\b(maintenance|repair|engineer|engineering|ac|a\/c|light|fan|plumber|electric|power|leak|tap|toilet flush)\b/i.test(text)) return 'engineering';
   if (/\b(nurse|pain|medicine|medication|dizzy|breath|bleed|doctor|sick|iv|injection|hurt)\b/i.test(text)) return 'nursing';
-  if (/\b(clean|spill|dirty|trash|rubbish|mop|housekeep|vomit|bin)\b/i.test(text)) return 'cleaning';
+  if (/\b(clean|spill|dirty|trash|rubbish|mop|housekeep|housekeeping|vomit|bin|linen|bedsheet|towel)\b/i.test(text)) return 'housekeeping';
   if (/\b(food|water|drink|tea|coffee|meal|snack|hungry|juice|breakfast|lunch|dinner|thirsty)\b/i.test(text)) return 'food';
-  if (/\b(blanket|pillow|light|tv|remote|temperature|cold|hot|air|fan|charger|towel)\b/i.test(text)) return 'utilities';
   return null;
 }
 const DEMO_KEY='care-companion-requests-v1';

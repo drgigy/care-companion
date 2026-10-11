@@ -24,7 +24,7 @@ async function start(){
   if(active||starting)return;if(!store.profile){$('login-dialog').showModal();return;}
   starting=true;$('start').disabled=true;
   try{
-    if(store.demo){setSession(true);const greeting='നമസ്കാരം. നിങ്ങൾക്ക് എന്ത് സഹായം വേണം? I can help with food, utilities, cleaning, nursing, or complaints.';bubble(greeting);speak(greeting);}
+    if(store.demo){setSession(true);const greeting='നമസ്കാരം. നിങ്ങൾക്ക് എന്ത് സഹായം വേണം? I can help with nursing, food, housekeeping, maintenance, billing, insurance, IT, or guest relations.';bubble(greeting);speak(greeting);}
     else{
       $('start').textContent='Connecting to your companion…';
       live=new LiveCompanion(store,{onText:text=>{bubble(text);},onState:state=>{$('session-state').textContent=state;},onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(1200),onRequest:async args=>{
