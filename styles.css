@@ -161,7 +161,31 @@ body[data-page=patient] footer{position:fixed;right:34px;bottom:28px;display:blo
 body[data-page=patient][data-theme=night] footer{color:#c7aa68}
 body[data-page=patient] footer small{font:800 8px 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:2px;opacity:.8}
 body[data-page=patient] footer a{display:none}
-@media(max-width:760px){body[data-page=patient] header{padding:12px 16px;min-height:64px}body[data-page=patient] .patient-clock{left:28px;top:24vh}body[data-page=patient][data-theme=night] .patient-clock{top:46vh}body[data-page=patient] .patient-clock span{font-size:60px}body[data-page=patient] .patient-clock p{font-size:15px}body[data-page=patient] .start{left:28px;top:55vh;min-width:236px;font-size:16px}body[data-page=patient][data-theme=night] .start{top:68vh;min-width:260px}body[data-page=patient] .chat,body[data-page=patient] .pending{left:24px;top:68vh;width:calc(100vw - 48px)}}
+@media(max-width:760px){
+body[data-page=patient]{min-height:100svh;overflow:hidden;background-position:center center}
+body[data-page=patient]::before{left:0;top:20vh;width:100vw;height:58vh;background:radial-gradient(ellipse at 50% 48%,#eef8ff 0 36%,rgba(238,248,255,.92) 48%,rgba(238,248,255,0) 72%)}
+body[data-page=patient][data-theme=night]::before{top:36vh;height:62vh;background:radial-gradient(ellipse at 50% 52%,#101d3a 0 38%,rgba(16,29,58,.96) 52%,rgba(16,29,58,0) 76%)}
+body[data-page=patient] header{height:62px;padding:12px 14px;min-height:62px}
+body[data-page=patient] .header-right{gap:8px}
+body[data-page=patient] .text-button{padding:8px 12px;font-size:11px}
+body[data-page=patient] .patient-layout,body[data-page=patient] .companion-card{height:100svh}
+body[data-page=patient] .patient-clock{left:0;right:0;top:31vh;text-align:center}
+body[data-page=patient][data-theme=night] .patient-clock{top:48vh}
+body[data-page=patient] .patient-clock div{justify-content:center;gap:10px}
+body[data-page=patient] .patient-clock span{font-size:56px;line-height:.88}
+body[data-page=patient] .patient-clock small{font-size:16px;margin-bottom:6px}
+body[data-page=patient] .patient-clock p{font-size:15px;margin-top:12px}
+body[data-page=patient] .patient-clock i{width:42px;height:3px;margin:20px auto 0}
+body[data-page=patient] .start{left:50%;top:58vh;transform:translateX(-50%);width:calc(100vw - 48px);max-width:330px;min-width:0;min-height:56px;font-size:16px;justify-content:center}
+body[data-page=patient] .start>span:first-child,body[data-page=patient] .start>span:last-child{margin:0}
+body[data-page=patient][data-theme=night] .start{top:68vh;width:calc(100vw - 64px);max-width:320px;min-width:0}
+body[data-page=patient] #session-controls{left:50%;top:58vh;transform:translateX(-50%);width:calc(100vw - 48px);max-width:360px}
+body[data-page=patient][data-theme=night] #session-controls{top:68vh}
+body[data-page=patient] .chat,body[data-page=patient] .pending{left:20px;top:70vh;width:calc(100vw - 40px);max-height:20vh}
+body[data-page=patient][data-theme=night] .chat,body[data-page=patient][data-theme=night] .pending{left:20px;top:80vh;width:calc(100vw - 40px);transform:none}
+body[data-page=patient] footer{right:18px;bottom:18px;font-size:9px}
+body[data-page=patient] footer small{font-size:7px;letter-spacing:1.6px}
+}
 body[data-page=log]{height:100vh;overflow:hidden;background:#f8faf5}
 body[data-page=log] header{height:82px}
 .log-layout{height:calc(100vh - 82px);padding:22px 34px 28px;display:grid;grid-template-rows:auto auto 1fr;gap:14px}
