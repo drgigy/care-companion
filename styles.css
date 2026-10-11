@@ -125,3 +125,39 @@ body[data-page=patient] .companion-card{grid-column:1;padding-left:96px;padding-
 .staff-request-list strong{display:block;font-size:12px;margin-bottom:4px}
 .staff-request-list span,.staff-request-list p{display:block;margin:0;color:var(--muted);font-size:12px;line-height:1.45}
 body[data-page=patient] .patient-requests{display:none}
+body[data-page=patient]{min-height:100vh;overflow:hidden;background:#eaf7ff url("assets/ocean.gif") center/cover no-repeat;color:#0d3762}
+body[data-page=patient][data-theme=night]{background-color:#101d3a;background-image:url("assets/night.gif");color:#f7df9a}
+body[data-page=patient]::before{content:"";position:fixed;left:0;top:22vh;width:43vw;height:54vh;background:#eef8ff;z-index:0;pointer-events:none}
+body[data-page=patient][data-theme=night]::before{left:27vw;top:47vh;width:46vw;height:37vh;background:#101d3a}
+body[data-page=patient] header{position:fixed;inset:0 0 auto 0;height:72px;padding:18px 26px;border:0;background:transparent;z-index:4}
+body[data-page=patient] .brand,body[data-page=patient] .top-room-status,body[data-page=patient] .connection{display:none}
+body[data-page=patient] .header-right{margin-left:auto;gap:12px}
+body[data-page=patient] .text-button{border:1px solid color-mix(in srgb,currentColor 28%,transparent);border-radius:999px;background:color-mix(in srgb,white 52%,transparent);color:inherit;padding:9px 15px;font-weight:700;font-size:12px;backdrop-filter:blur(8px)}
+body[data-page=patient][data-theme=night] .text-button{background:color-mix(in srgb,#101d3a 60%,transparent);color:#f7df9a;border-color:#f7df9a66}
+body[data-page=patient] .patient-layout{height:100vh;min-height:0;display:block;padding:0;max-width:none}
+body[data-page=patient] .companion-card{height:100vh;width:100%;border:0;border-radius:0;box-shadow:none;background:transparent;padding:0;display:block;text-align:left;color:inherit}
+body[data-page=patient] .patient-clock{position:absolute;left:7.1vw;top:31.8vh;color:#0d3762;z-index:1}
+body[data-page=patient][data-theme=night] .patient-clock{left:0;right:0;top:54vh;text-align:center;color:#f7df9a}
+body[data-page=patient] .patient-clock div{display:flex;align-items:flex-end;gap:16px}
+body[data-page=patient] .patient-clock span{font:800 92px/.82 Manrope,sans-serif;letter-spacing:0}
+body[data-page=patient] .patient-clock small{font:800 24px/1 Manrope,sans-serif;opacity:.58;margin-bottom:10px}
+body[data-page=patient] .patient-clock p{margin:18px 0 0;font-size:21px;font-weight:500;color:#3f84c7}
+body[data-page=patient][data-theme=night] .patient-clock p{color:#c7aa68}
+body[data-page=patient] .patient-clock i{display:block;width:52px;height:4px;border-radius:99px;background:#3b8bd0;margin-top:32px}
+body[data-page=patient][data-theme=night] .patient-clock i{display:none}
+body[data-page=patient] .avatar-zone{display:none}
+body[data-page=patient] .start{position:absolute;left:7.1vw;top:61.2vh;width:auto;min-width:256px;min-height:62px;padding:8px 24px 8px 9px;gap:16px;border-radius:999px;background:#ffffffd9;color:#0d3762;border:1px solid #b8d9f5;box-shadow:0 12px 24px #3678b526;font:800 18px Manrope,sans-serif;backdrop-filter:blur(10px);z-index:1}
+body[data-page=patient][data-theme=night] .start{left:50%;top:74.5vh;transform:translateX(-50%);background:transparent;color:#ffe58f;border:2px solid #ffe58f;box-shadow:none;padding:0 40px;min-width:306px;justify-content:center}
+body[data-page=patient] .start>span:first-child{display:grid;place-items:center;width:42px;height:42px;margin:0;background:#3b8bd0;color:white;border-radius:50%;font-size:21px}
+body[data-page=patient][data-theme=night] .start>span:first-child,body[data-page=patient][data-theme=night] .start>span:last-child{display:none}
+body[data-page=patient] .start>span:last-child{margin-left:0;font-size:0}
+body[data-page=patient] .start>span:last-child::after{content:"";font-size:18px}
+body[data-page=patient] #session-controls{position:absolute;left:7.1vw;top:61.2vh;width:min(420px,86vw);grid-template-columns:1fr 1fr}
+body[data-page=patient][data-theme=night] #session-controls{left:50%;top:74.5vh;transform:translateX(-50%)}
+body[data-page=patient] .chat,body[data-page=patient] .pending{position:absolute;left:7.1vw;top:72vh;width:min(520px,86vw);max-height:22vh;overflow:auto;background:#ffffffd9;border:1px solid #b8d9f5;border-radius:18px;padding:14px;backdrop-filter:blur(10px)}
+body[data-page=patient][data-theme=night] .chat,body[data-page=patient][data-theme=night] .pending{left:50%;top:84vh;transform:translateX(-50%);background:#101d3acc;border-color:#ffe58f66;color:#ffecc0}
+body[data-page=patient] footer{position:fixed;left:0;right:0;bottom:28px;display:block;margin:0;padding:0;border:0;text-align:center;z-index:2;font:800 11px Manrope,sans-serif;color:#3f84c7;letter-spacing:.3px}
+body[data-page=patient][data-theme=night] footer{color:#c7aa68}
+body[data-page=patient] footer small{font:800 8px 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:2px;opacity:.8}
+body[data-page=patient] footer a{display:none}
+@media(max-width:760px){body[data-page=patient] header{padding:12px 16px;min-height:64px}body[data-page=patient] .patient-clock{left:28px;top:24vh}body[data-page=patient][data-theme=night] .patient-clock{top:46vh}body[data-page=patient] .patient-clock span{font-size:60px}body[data-page=patient] .patient-clock p{font-size:15px}body[data-page=patient] .start{left:28px;top:55vh;min-width:236px;font-size:16px}body[data-page=patient][data-theme=night] .start{top:68vh;min-width:260px}body[data-page=patient] .chat,body[data-page=patient] .pending{left:24px;top:68vh;width:calc(100vw - 48px)}}
