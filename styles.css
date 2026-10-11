@@ -128,7 +128,7 @@ body[data-page=patient] .patient-requests{display:none}
 body[data-page=patient]{min-height:100vh;overflow:hidden;background:#eaf7ff url("assets/ocean.gif") center/cover no-repeat;color:#0d3762}
 body[data-page=patient][data-theme=night]{background-color:#101d3a;background-image:url("assets/night.gif");color:#f7df9a}
 body[data-page=patient]::before{content:"";position:fixed;left:0;top:22vh;width:43vw;height:54vh;background:#eef8ff;z-index:0;pointer-events:none}
-body[data-page=patient][data-theme=night]::before{left:27vw;top:47vh;width:46vw;height:37vh;background:#101d3a}
+body[data-page=patient][data-theme=night]::before{left:0;top:40vh;width:100vw;height:58vh;background:radial-gradient(ellipse at 50% 55%,#101d3a 0 34%,rgba(16,29,58,.96) 48%,rgba(16,29,58,0) 72%)}
 body[data-page=patient] header{position:fixed;inset:0 0 auto 0;height:72px;padding:18px 26px;border:0;background:transparent;z-index:4}
 body[data-page=patient] .brand,body[data-page=patient] .top-room-status,body[data-page=patient] .connection{display:none}
 body[data-page=patient] .header-right{margin-left:auto;gap:12px}
@@ -139,6 +139,7 @@ body[data-page=patient] .companion-card{height:100vh;width:100%;border:0;border-
 body[data-page=patient] .patient-clock{position:absolute;left:7.1vw;top:31.8vh;color:#0d3762;z-index:1}
 body[data-page=patient][data-theme=night] .patient-clock{left:0;right:0;top:54vh;text-align:center;color:#f7df9a}
 body[data-page=patient] .patient-clock div{display:flex;align-items:flex-end;gap:16px}
+body[data-page=patient][data-theme=night] .patient-clock div{justify-content:center}
 body[data-page=patient] .patient-clock span{font:800 92px/.82 Manrope,sans-serif;letter-spacing:0}
 body[data-page=patient] .patient-clock small{font:800 24px/1 Manrope,sans-serif;opacity:.58;margin-bottom:10px}
 body[data-page=patient] .patient-clock p{margin:18px 0 0;font-size:21px;font-weight:500;color:#3f84c7}
