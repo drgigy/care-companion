@@ -54,37 +54,7 @@ $('mic').onclick=()=>{
 };
 function activeRoomRequests(){return store.items.filter(r=>r.room===store.profile?.room&&r.status==='in-progress');}
 function renderStaffRequests(){const rows=activeRoomRequests();if(!rows.some(r=>r.id===selectedCompletionId))selectedCompletionId=rows[0]?.id||null;$('staff-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-complete-id="${escapeHTML(r.id)}" class="${r.id===selectedCompletionId?'selected':''}"><strong>${escapeHTML(categoryLabel(r.category))}</strong><span>${escapeHTML(r.summary)}</span></button>`).join(''):'<p>No acknowledged requests are waiting for bedside completion.</p>';$('staff-request-list').querySelectorAll('[data-complete-id]').forEach(button=>button.onclick=()=>{selectedCompletionId=button.dataset.completeId;renderStaffRequests();});$('staff-save').disabled=!selectedCompletionId;}
-function parseStaffIdentity(text){const employee=text.match(/(?:employee|emp|staff)?\s*(?:id|number)\s*(?:is)?\s*([A-Za-z0-9-]+)/i)?.[1]||'';const nameMatch=text.match(/(?:my name is|name is|i am|i'm)\s+(.+?)(?:\s+(?:and\s+)?(?:my\s+)?(?:employee|emp|staff)?\s*(?:id|number)\b|$)/i);let name=(nameMatch?.[1]||text.replace(/(?:employee|emp|staff)?\s*(?:id|number)\s*(?:is)?\s*[A-Za-z0-9-]+/ig,'')).replace(/[,.]/g,' ').trim();return {name,employee};}
-function isYes(text){return /\b(yes|yeah|correct|confirm|confirmed|ok|okay|right|sure)\b/i.test(text);}
-function isNo(text){return /\b(no|wrong|incorrect|change|again|not correct)\b/i.test(text);}
-function loadVoices(){return new Promise(resolve=>{const voices=speechSynthesis.getVoices();if(voices.length){resolve(voices);return;}speechSynthesis.onvoiceschanged=()=>resolve(speechSynthesis.getVoices());setTimeout(()=>resolve(speechSynthesis.getVoices()),900);});}
-function preferredStaffVoice(voices){return voices.find(v=>/veena|google indian english female|indian english female/i.test(v.name))||voices.find(v=>/^en-IN$/i.test(v.lang)&&!/male|rishi|ravi/i.test(v.name))||voices.find(v=>/samantha|karen|moira|tessa|victoria|ava|allison|susan|zira|google us english|google uk english female/i.test(v.name))||voices.find(v=>/^en-/i.test(v.lang)&&!/male|daniel|alex|fred|rishi|ravi/i.test(v.name));}
-async function speakStaff(text){toast(text);if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);const voice=preferredStaffVoice(await loadVoices());utterance.lang=voice?.lang||'en-IN';utterance.rate=.9;utterance.pitch=1.08;if(voice)utterance.voice=voice;await new Promise(resolve=>{utterance.onend=resolve;utterance.onerror=resolve;speechSynthesis.speak(utterance);setTimeout(resolve,Math.max(1800,text.length*78));});}
-function listenStaff(){return new Promise((resolve,reject)=>{const API=window.SpeechRecognition||window.webkitSpeechRecognition;if(!API){reject(Error('Voice capture is unavailable. Please type the name and employee ID.'));return;}const capture=new API();let settled=false;capture.lang='en-IN';capture.interimResults=false;capture.onresult=e=>{settled=true;capture.stop();resolve(e.results[0][0].transcript);};capture.onerror=()=>{settled=true;reject(Error('Could not capture voice. Please try again or type the details.'));};capture.onend=()=>{if(!settled)reject(Error('I did not hear anything. Please try again or type the details.'));};capture.start();});}
 async function saveStaffCompletion(){await store.completeAtRoom(selectedCompletionId,'Staff',$('staff-employee-id').value);toast('Request completed');staffUnlocked=false;$('staff-dialog').close();$('staff-employee-id').value='';}
-function readyToSaveStaff(){toast('Thank you. Please check the details and press Save completion.');$('staff-save').disabled=false;$('staff-save').focus();}
-function speakableId(value){return String(value||'').replace(/\s+/g,'').split('').join(' ');}
-async function askStaffIdentity(){
-  if(!selectedCompletionId)return;
-  $('staff-error').textContent='';$('staff-capture').disabled=true;$('staff-capture').textContent='Listening…';
-  try{
-    for(let attempt=0;attempt<2;attempt++){
-      await speakStaff('Please state your name and employee ID.');
-      const identityText=await listenStaff();const parsed=parseStaffIdentity(identityText);
-      $('staff-name').value=parsed.name;$('staff-employee-id').value=parsed.employee;
-      if(!parsed.name||!parsed.employee){await speakStaff('I could not clearly hear both name and employee ID. Please say them again.');continue;}
-      await speakStaff(`I heard name ${parsed.name}, employee ID ${speakableId(parsed.employee)}. Is that correct?`);
-      let confirmation='';try{confirmation=await listenStaff();}catch{toast('Please press Save completion if the details are correct, or edit them if needed.');return;}
-      if(isYes(confirmation)){await speakStaff('Thank you.');readyToSaveStaff();return;}
-      if(isNo(confirmation)){await speakStaff('Okay. Please say your name and employee ID again.');continue;}
-      await speakStaff('Please confirm by saying yes, or say no to try again.');
-      let secondConfirmation='';try{secondConfirmation=await listenStaff();}catch{toast('Please press Save completion if the details are correct, or edit them if needed.');return;}
-      if(isYes(secondConfirmation)){await speakStaff('Thank you.');readyToSaveStaff();return;}
-    }
-    toast('Please edit the name and employee ID if needed, then press Save completion.');
-  }catch(error){$('staff-error').textContent=error.message;}
-  finally{$('staff-capture').disabled=!selectedCompletionId;$('staff-capture').textContent='Complete';}
-}
 $('staff').onclick=()=>{if(active)end();staffUnlocked=true;selectedCompletionId=null;$('staff-error').textContent='';$('staff-employee-id').value='';$('staff-dialog').showModal();renderStaffRequests();setTimeout(()=>$('staff-employee-id').focus(),50);};
 $('staff-close').onclick=()=>{staffUnlocked=false;$('staff-dialog').close();};
 $('staff-form').onsubmit=async e=>{e.preventDefault();$('staff-error').textContent='';const submit=$('staff-save');submit.disabled=true;try{if(!selectedCompletionId)throw Error('Select an acknowledged request first.');await saveStaffCompletion();}catch(error){$('staff-error').textContent=error.message;}finally{submit.disabled=false;if(staffUnlocked)renderStaffRequests();}};
