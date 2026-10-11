@@ -1,6 +1,12 @@
 // Continuous live voice audio: microphone streams while model audio plays.
 // Echo cancellation and server-side activity detection allow natural interruption.
+let genaiModulePromise;
+function loadGenAI(){
+  genaiModulePromise ||= import('https://esm.sh/@google/genai@1.45.0').catch(error=>{genaiModulePromise=null;throw error;});
+  return genaiModulePromise;
+}
 export class LiveCompanion {
+  static preload(){loadGenAI().catch(()=>{});}
   constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;}
   async start(){
     const generation=++this.generation;
@@ -10,7 +16,7 @@ export class LiveCompanion {
       this.outputContext=new AudioContext({sampleRate:24000});await this.outputContext.resume();
       this.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
       if(this.stopped||generation!==this.generation){this.stream.getTracks().forEach(t=>t.stop());return;}
-      const [{GoogleGenAI},result]=await Promise.all([import('https://esm.sh/@google/genai@1.45.0'),this.store.call('liveToken',{})]);
+      const [{GoogleGenAI},result]=await Promise.all([loadGenAI(),this.store.call('liveToken',{})]);
       if(this.stopped)return;
       const {token,model,liveConfig}=result.data;const ai=new GoogleGenAI({apiKey:token,httpOptions:{apiVersion:'v1beta'}});
       this.session=await ai.live.connect({model,config:liveConfig,callbacks:{
