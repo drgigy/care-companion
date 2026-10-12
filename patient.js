@@ -54,7 +54,7 @@ $('start').onclick=start;$('end').onclick=end;$('message-form').onsubmit=e=>{e.p
 document.querySelectorAll('#language-tabs button').forEach(button=>button.onclick=()=>{settings.language=button.dataset.language;settings=saveTabletSettings(settings);syncSettingsToUI();if(live)live.sendText(`Language setting changed to ${language()}. Continue using this setting.`);});
 $('night-start').innerHTML=hourOptions();$('night-end').innerHTML=hourOptions();
 function rowStatus(row){return row.status==='new'?'received':row.status==='in-progress'?'way':'done';}
-function statusLabel(row){const labels={received:{english:'Received',malayalam:'ലഭിച്ചു',arabic:'تم الاستلام'},way:{english:'On the way',malayalam:'വരുന്നു',arabic:'في الطريق'},done:{english:'Completed',malayalam:'പൂർത്തിയായി',arabic:'مكتمل'}};const key=rowStatus(row),lang=displayLanguage()==='auto'?'english':displayLanguage();return labels[key][lang]||labels[key].english;}
+function statusLabel(row){return {received:'Received',way:'On the way',done:'Completed'}[rowStatus(row)]||'Received';}
 function renderPatientRequests(){
   const today=new Date();today.setHours(0,0,0,0);const rows=store.items.filter(r=>r.room===store.profile?.room&&r.createdAt>=today.getTime()).sort((a,b)=>b.createdAt-a.createdAt);
   $('patient-requests').innerHTML=rows.map(r=>`<article class="patient-request-card ${rowStatus(r)}"><div><strong>${escapeHTML(r.summary)}</strong><small>${escapeHTML(categoryLabel(r.category))} · ${new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small></div><div class="progress-bars"><i></i><i></i><i></i></div><span>${escapeHTML(statusLabel(r))}</span></article>`).join('');
