@@ -26,7 +26,7 @@ export class LiveCompanion {
     const [module,result]=await Promise.all([loadGenAI(),store.call('liveToken',{})]);
     return {GoogleGenAI:module.GoogleGenAI,result,createdAt:Date.now()};
   }
-  constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;this.lastPatientText='';this.endConfirmationAsked=false;}
+  constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;this.lastPatientText='';this.endConfirmationAsked=false;this.closingStarted=false;this.closeTimer=null;}
   languageInstruction(languageMode){
     const greetings={
       english:'Welcome to Aster Medicity. How can I assist you?',
@@ -76,6 +76,7 @@ export class LiveCompanion {
     if(content?.interrupted){this.clearAudio();this.callbacks.onState('Listening to you');}
     if(content?.outputTranscription?.text){
       const text=content.outputTranscription.text;this.transcript=(this.transcript||'')+text;
+      if(this.isClosingText(this.transcript))this.beginClosingEnd();
     }
     if(content?.inputTranscription?.text)this.lastPatientText=((this.lastPatientText||'')+' '+content.inputTranscription.text).slice(-320);
     for(const part of content?.modelTurn?.parts||[])if(part.inlineData?.data&&part.inlineData.mimeType?.startsWith('audio/pcm'))this.play(part.inlineData.data);
@@ -84,7 +85,8 @@ export class LiveCompanion {
     for(const call of calls){
       if(this.stopped)return;let response;
       if(call.name==='end_conversation'){
-        if(this.hasPatientEndConfirmation()){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
+        if(this.closingStarted)response={status:'ending'};
+        else if(this.hasPatientEndConfirmation()){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
         else {response={status:'needs_patient_confirmation',message:'Do not end yet. Ask whether the patient needs anything else and wait for a clear answer before calling end_conversation.'};this.endConfirmationAsked=true;}
       }
       else if(call.name!=='request_care')response={error:'Unknown tool'};
@@ -99,7 +101,20 @@ export class LiveCompanion {
   }
   noteAssistantTurn(text){
     const normalized=text.toLowerCase();
+    if(this.isClosingText(normalized))this.beginClosingEnd();
     if(/anything else|need anything|okay to stop|ok to stop|stop now|end now|close now|മറ്റെന്തെങ്കിലും|ഇനി എന്തെങ്കിലും|നിർത്തട്ടെ|അവസാനിപ്പിക്കട്ടെ|أي شيء آخر|هل تحتاج|يمكنني الإنهاء|أنهي الآن/.test(normalized))this.endConfirmationAsked=true;
+  }
+  isClosingText(text){
+    const normalized=String(text||'').toLowerCase();
+    return /thank you[\s,.!]*get well soon/.test(normalized)||(/നന്ദി/.test(normalized)&&/സുഖ/.test(normalized))||(/شكر|شكراً|شكرًا/.test(normalized)&&/شفاء|العافية|سلامتك/.test(normalized));
+  }
+  beginClosingEnd(){
+    if(this.closingStarted||this.stopped)return;
+    this.closingStarted=true;this.muted=true;
+    this.stream?.getAudioTracks().forEach(track=>track.enabled=false);
+    const remaining=this.outputContext?Math.max(1500,(this.nextPlay-this.outputContext.currentTime)*1000+700):2500;
+    clearTimeout(this.closeTimer);
+    this.closeTimer=setTimeout(()=>{if(!this.stopped)this.callbacks.onEnd?.({reason:'closing'});},Math.min(Math.max(remaining,1500),6500));
   }
   hasPatientEndConfirmation(){
     const text=(this.lastPatientText||'').toLowerCase().trim();
@@ -115,5 +130,5 @@ export class LiveCompanion {
   clearAudio(){this.sources.forEach(source=>{try{source.stop();}catch{}});this.sources.clear();this.nextPlay=0;}
   sendText(text){this.session?.sendClientContent({turns:[{role:'user',parts:[{text}]}],turnComplete:true});}
   toggleMute(){this.muted=!this.muted;this.stream?.getAudioTracks().forEach(track=>track.enabled=!this.muted);if(this.muted)this.session?.sendRealtimeInput({audioStreamEnd:true});this.callbacks.onState(this.muted?'Microphone muted':'Listening to you');return this.muted;}
-  stop(){this.stopped=true;++this.generation;clearTimeout(this.timeout);this.clearAudio();this.stream?.getTracks().forEach(t=>t.stop());this.microphone?.disconnect();this.processor?.disconnect();this.session?.close();this.inputContext?.close().catch(()=>{});this.outputContext?.close().catch(()=>{});this.session=null;}
+  stop(){this.stopped=true;++this.generation;clearTimeout(this.timeout);clearTimeout(this.closeTimer);this.clearAudio();this.stream?.getTracks().forEach(t=>t.stop());this.microphone?.disconnect();this.processor?.disconnect();this.session?.close();this.inputContext?.close().catch(()=>{});this.outputContext?.close().catch(()=>{});this.session=null;}
 }
