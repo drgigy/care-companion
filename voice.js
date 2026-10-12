@@ -73,20 +73,20 @@ export class LiveCompanion {
     if(this.stopped)return;
     if(message.goAway){this.callbacks.onError('The voice session is ending. Please start again.');return;}
     const content=message.serverContent;
-    if(content?.interrupted){this.clearAudio();this.callbacks.onState('Listening to you');}
+    if(content?.interrupted){this.clearAudio();if(!this.closingStarted)this.callbacks.onState('Listening to you');}
     if(content?.outputTranscription?.text){
       const text=content.outputTranscription.text;this.transcript=(this.transcript||'')+text;
       if(this.isClosingText(this.transcript))this.beginClosingEnd();
     }
-    if(content?.inputTranscription?.text)this.lastPatientText=((this.lastPatientText||'')+' '+content.inputTranscription.text).slice(-320);
+    if(content?.inputTranscription?.text&&!this.closingStarted)this.lastPatientText=((this.lastPatientText||'')+' '+content.inputTranscription.text).slice(-320);
     for(const part of content?.modelTurn?.parts||[])if(part.inlineData?.data&&part.inlineData.mimeType?.startsWith('audio/pcm'))this.play(part.inlineData.data);
-    if(content?.turnComplete){if(this.transcript){this.noteAssistantTurn(this.transcript);this.callbacks.onText(this.transcript);this.transcript='';}this.callbacks.onState('Listening to you');}
+    if(content?.turnComplete){if(this.transcript){this.noteAssistantTurn(this.transcript);this.callbacks.onText(this.transcript);this.transcript='';}if(!this.closingStarted)this.callbacks.onState('Listening to you');}
     const calls=message.toolCall?.functionCalls||[];
     for(const call of calls){
       if(this.stopped)return;let response;
       if(call.name==='end_conversation'){
         if(this.closingStarted)return;
-        if(this.hasPatientEndConfirmation()){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
+        if(this.hasPatientEndConfirmation()){response={status:'ending'};this.beginClosingEnd();}
         else {response={status:'needs_patient_confirmation',message:'Do not end yet. Ask whether the patient needs anything else and wait for a clear answer before calling end_conversation.'};this.endConfirmationAsked=true;}
       }
       else if(call.name!=='request_care')response={error:'Unknown tool'};
@@ -112,13 +112,18 @@ export class LiveCompanion {
     if(this.closingStarted||this.stopped)return;
     this.closingStarted=true;this.muted=true;
     this.stream?.getAudioTracks().forEach(track=>track.enabled=false);
-    const remaining=this.outputContext?Math.max(1500,(this.nextPlay-this.outputContext.currentTime)*1000+700):2500;
+    try{this.session?.sendRealtimeInput({audioStreamEnd:true});}catch{}
+    this.callbacks.onState('Conversation ending');
+    this.scheduleCloseAfterAudio();
+  }
+  scheduleCloseAfterAudio(){
+    const remaining=this.outputContext?Math.max(1000,(this.nextPlay-this.outputContext.currentTime)*1000+1000):2500;
     clearTimeout(this.closeTimer);
     this.closeTimer=setTimeout(()=>{
       if(this.stopped)return;
       try{this.session?.close();}catch{}
       this.callbacks.onEnd?.({reason:'closing'});
-    },Math.min(Math.max(remaining,1500),6500));
+    },Math.min(Math.max(remaining,1000),6500));
   }
   hasPatientEndConfirmation(){
     const text=(this.lastPatientText||'').toLowerCase().trim();
@@ -129,7 +134,7 @@ export class LiveCompanion {
   play(base64){
     if(this.stopped)return;const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));const view=new DataView(bytes.buffer),buffer=this.outputContext.createBuffer(1,bytes.length/2,24000),channel=buffer.getChannelData(0);
     for(let i=0;i<channel.length;i++)channel[i]=view.getInt16(i*2,true)/32768;
-    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>this.sources.delete(source);source.start(time);this.callbacks.onState('Companion is speaking');
+    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>this.sources.delete(source);source.start(time);if(this.closingStarted)this.scheduleCloseAfterAudio();else this.callbacks.onState('Companion is speaking');
   }
   clearAudio(){this.sources.forEach(source=>{try{source.stop();}catch{}});this.sources.clear();this.nextPlay=0;}
   sendText(text){this.session?.sendClientContent({turns:[{role:'user',parts:[{text}]}],turnComplete:true});}
