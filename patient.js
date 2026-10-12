@@ -4,7 +4,7 @@ const store=new CareStore('patient');let active=false,live=null,starting=false,a
 const langText={
   auto:{tap:'Tap to talk',sub:'സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث',help:['Ask for water, food, cleaning, help from a nurse — anything you need.','വെള്ളം, ഭക്ഷണം, വൃത്തിയാക്കൽ, നഴ്സിന്റെ സഹായം — എന്ത് ആവശ്യം പറയാം.','اطلب الماء أو الطعام أو التنظيف أو مساعدة الممرضة — أي شيء تحتاجه.'],emergency:'For emergencies, press the nurse call button on your bed.'},
   english:{tap:'Tap to talk',sub:'Tell us what you need',help:['Ask for water, food, cleaning, help from a nurse — anything you need.','Your request will be sent to the right team.'],emergency:'For emergencies, press the nurse call button on your bed.'},
-  malayalam:{tap:'സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക',sub:'നിങ്ങൾക്ക് ആവശ്യമുള്ളത് പറയുക',help:['വെള്ളം, ഭക്ഷണം, വൃത്തിയാക്കൽ, നഴ്സിന്റെ സഹായം — എന്ത് ആവശ്യം പറയാം.','നിങ്ങളുടെ അഭ്യർത്ഥന ശരിയായ ടീമിലേക്ക് അയക്കും.'],emergency:'അടിയന്തര ഘട്ടത്തിൽ കിടക്കയിലെ നഴ്‌സ് കോൾ ബട്ടൺ അമർത്തുക.'},
+  malayalam:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നിങ്ങൾക്ക് ആവശ്യമുള്ളത് എന്താണെന്ന് പറയൂ',help:['വെള്ളം, ഭക്ഷണം, വൃത്തിയാക്കൽ, നഴ്‌സിന്റെ സഹായം തുടങ്ങി എന്ത് ആവശ്യവും പറയാം.','നിങ്ങളുടെ ആവശ്യം ബന്ധപ്പെട്ട വിഭാഗത്തെ അറിയിക്കുന്നതാണ്.'],emergency:'അടിയന്തര ഘട്ടങ്ങളിൽ ബെഡിനടുത്തുള്ള നഴ്‌സ് കോൾ ബട്ടൺ അമർത്തുക.'},
   arabic:{tap:'اضغط للتحدث',sub:'قل لنا ما تحتاجه',help:['اطلب الماء أو الطعام أو التنظيف أو مساعدة الممرضة — أي شيء تحتاجه.','سنرسل طلبك إلى الفريق المناسب.'],emergency:'في الحالات الطارئة، اضغط زر استدعاء الممرضة بجانب السرير.'}
 };
 const languageName={auto:'Auto',english:'English',malayalam:'മലയാളം',arabic:'العربية'};
