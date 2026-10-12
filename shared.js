@@ -39,7 +39,8 @@ export class CareStore {
     if(config.mode!=='firebase'||!config.firebase.projectId)throw Error('Firebase configuration is missing. Configure config.js or use demo mode.');
     const base='https://www.gstatic.com/firebasejs/12.4.0/';
     const [app,auth,db,functions]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-firestore.js'),import(base+'firebase-functions.js')]);
-    this.authSDK=auth;this.dbSDK=db;const firebaseApp=app.initializeApp(config.firebase);
+    const appName=this.page==='patient'?'care-companion-room':'care-companion-staff';
+    this.authSDK=auth;this.dbSDK=db;const firebaseApp=app.initializeApp(config.firebase,appName);
     this.auth=auth.getAuth(firebaseApp);this.db=db.getFirestore(firebaseApp);
     this.functions=functions.getFunctions(firebaseApp,config.functionsRegion);this.call=(name,data)=>functions.httpsCallable(this.functions,name)(data);
     await auth.setPersistence(this.auth,auth.browserLocalPersistence);
