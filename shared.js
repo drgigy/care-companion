@@ -9,7 +9,7 @@ export const categories = {
   it: { label:'IT', icon:'⌁', hint:'Wi-Fi, TV & device support' },
   guestRelations: { label:'Guest relations', icon:'!', hint:'Feedback & concerns' }
 };
-export const statuses = {new:'Awaiting attention','in-progress':'In progress',completed:'Completed'};
+export const statuses = {new:'Received','in-progress':'On the way',completed:'Completed'};
 export const $ = id => document.getElementById(id);
 export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastTimer;
@@ -27,12 +27,17 @@ export function guessCategory(text) {
 }
 const DEMO_KEY='care-companion-requests-v1';
 const ROOM_KEY='care-companion-room-v1';
+const SETTINGS_KEY='care-companion-tablet-settings-v1';
+const defaultSettings={ward:'Neuro Ward',patientName:'',uhid:'',language:'auto',display:'auto',nightStart:'18',nightEnd:'7',pin:'1234'};
+export function loadTabletSettings(){try{return {...defaultSettings,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')};}catch{return {...defaultSettings};}}
+export function saveTabletSettings(settings){const clean={...defaultSettings,...settings};localStorage.setItem(SETTINGS_KEY,JSON.stringify(clean));return clean;}
 export class CareStore {
-  constructor(page) {this.page=page;this.demo=config.mode==='demo';this.profile=null;this.items=[];this.listeners=[];this.unsubscribe=null;this.authEpoch=0;}
+  constructor(page) {this.page=page;this.demo=config.mode==='demo';this.profile=null;this.items=[];this.listeners=[];this.unsubscribe=null;this.authEpoch=0;this.context={};}
+  setContext(context){this.context={...this.context,...context};}
   async init(onState) {
     this.onState=onState;
     if(this.demo){
-      this.profile=this.page==='patient'?{role:'room',room:localStorage.getItem(ROOM_KEY)||'204'}:{role:'staff'};
+      this.profile=this.page==='patient'?{role:'room',room:localStorage.getItem(ROOM_KEY)||'201'}:{role:'staff'};
       this.readDemo();window.addEventListener('storage',e=>{if(e.key===DEMO_KEY)this.readDemo();});
       this.onState(this.profile);return;
     }
@@ -55,7 +60,7 @@ export class CareStore {
           if(required==='room'&&(!profile.room||typeof profile.room!=='string'))throw Error('The account needs a valid room assignment.');
           this.profile={...profile,uid:user.uid};
           const ref=db.collection(this.db,'requests');const q=required==='room'?db.query(ref,db.where('ownerUid','==',user.uid)):db.query(ref);
-          this.unsubscribe=db.onSnapshot(q,snapshot=>{this.items=snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),updatedAt:d.data().updatedAt?.toMillis?.()||Date.now(),completedAt:d.data().completedAt?.toMillis?.()||null})).sort((a,b)=>b.createdAt-a.createdAt);this.emit();},error=>{this.onState(this.profile,error);});
+          this.unsubscribe=db.onSnapshot(q,snapshot=>{this.items=snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),updatedAt:d.data().updatedAt?.toMillis?.()||Date.now(),acknowledgedAt:d.data().acknowledgedAt?.toMillis?.()||null,completedAt:d.data().completedAt?.toMillis?.()||null})).sort((a,b)=>b.createdAt-a.createdAt);this.emit();},error=>{this.onState(this.profile,error);});
         }
         this.onState(this.profile);
       }catch(error){if(epoch===this.authEpoch)this.onState(null,error);}
@@ -76,8 +81,8 @@ export class CareStore {
   async create(category,summary,id=crypto.randomUUID(),patientLanguage='english'){
     if(!this.profile||this.profile.role!=='room')throw Error('Connect a room account first.');
     if(!categories[category]||typeof summary!=='string'||!summary.trim()||summary.length>500)throw Error('Choose a category and a request under 500 characters.');
-    if(!['english','malayalam','other'].includes(patientLanguage))patientLanguage='english';
-    const request={room:this.profile.room,category,summary:summary.trim(),patientLanguage,status:'new',ownerUid:this.profile.uid||'demo-room',createdAt:Date.now(),updatedAt:Date.now(),completedAt:null,completedByName:null,completedByEmployeeId:null};
+    if(!['english','malayalam','arabic','other'].includes(patientLanguage))patientLanguage='english';
+    const request={room:this.profile.room,ward:this.context.ward||'',patientName:this.context.patientName||'',uhid:this.context.uhid||'',category,summary:summary.trim(),patientLanguage,status:'new',ownerUid:this.profile.uid||'demo-room',createdAt:Date.now(),updatedAt:Date.now(),acknowledgedAt:null,acknowledgedByEmployeeId:null,completedAt:null,completedByName:null,completedByEmployeeId:null};
     if(this.demo){this.readDemo();if(!this.items.some(r=>r.id===id)){this.items.push({id,...request});localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}}
     else {const db=this.dbSDK;const ref=db.doc(this.db,'requests',id);
       try{await db.setDoc(ref,{...request,createdAt:db.serverTimestamp(),updatedAt:db.serverTimestamp()});}
@@ -89,10 +94,11 @@ export class CareStore {
     }
     return id;
   }
-  async update(id,status){
+  async update(id,status,employeeId=''){
     if(this.profile?.role!=='staff')throw Error('Staff access is required.');
-    if(this.demo){this.readDemo();const row=this.items.find(r=>r.id===id);if(!row)throw Error('Request no longer exists.');if(!(row.status==='new'&&status==='in-progress'))throw Error('Request status already changed.');row.status=status;row.updatedAt=Date.now();localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}
-    else {if(status!=='in-progress')throw Error('Complete the request from the patient room.');const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status,updatedAt:db.serverTimestamp()});}
+    employeeId=String(employeeId||'').trim();if(!employeeId)throw Error('Enter employee ID.');
+    if(this.demo){this.readDemo();const row=this.items.find(r=>r.id===id);if(!row)throw Error('Request no longer exists.');if(!(row.status==='new'&&status==='in-progress'))throw Error('Request status already changed.');row.status=status;row.updatedAt=Date.now();row.acknowledgedAt=row.updatedAt;row.acknowledgedByEmployeeId=employeeId;localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}
+    else {if(status!=='in-progress')throw Error('Complete the request from the patient room.');const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status,updatedAt:db.serverTimestamp(),acknowledgedAt:db.serverTimestamp(),acknowledgedByEmployeeId:employeeId});}
   }
   async completeAtRoom(id,name,employeeId){
     if(this.profile?.role!=='room')throw Error('Connect a room account first.');
@@ -109,6 +115,7 @@ export function setupAccount(store,onProfile) {
     if(store.page==='patient'){
       const signedIn=!!store.profile;
       if($('settings-pin-label'))$('settings-pin-label').hidden=!signedIn||settingsUnlocked;
+      if($('settings-grid'))$('settings-grid').hidden=!signedIn||!settingsUnlocked;
       if(roomLabel){roomLabel.hidden=!signedIn||!settingsUnlocked;roomInput.required=signedIn&&settingsUnlocked;}
       if(liveLogin){liveLogin.hidden=store.demo||signedIn;$('email').required=!store.demo&&!signedIn;$('password').required=!store.demo&&!signedIn;}
       $('logout').hidden=store.demo||!store.profile||!settingsUnlocked;
@@ -121,7 +128,7 @@ export function setupAccount(store,onProfile) {
   };
   $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>((store.page==='patient'&&store.profile)?$('settings-pin'):$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();
   $('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const submit=e.target.querySelector('button.primary');submit.disabled=true;try{
-    if(store.page==='patient'&&store.profile&&!settingsUnlocked){if($('settings-pin').value!=='1234')throw Error('Incorrect PIN.');settingsUnlocked=true;syncSettings();setTimeout(()=>($('demo-room')||$('email'))?.focus(),50);return;}
+    if(store.page==='patient'&&store.profile&&!settingsUnlocked){if($('settings-pin').value!==(loadTabletSettings().pin||'1234'))throw Error('Incorrect PIN.');settingsUnlocked=true;syncSettings();setTimeout(()=>($('demo-room')||$('email'))?.focus(),50);return;}
     if(store.page==='patient'&&(store.demo||store.profile))await store.changeRoom($('demo-room')?.value.trim());
     else if(!store.demo&&!store.profile)await store.login($('email').value,$('password').value,$('demo-room')?.value.trim());
     $('login-dialog').close();if($('password'))$('password').value='';toast(store.page==='patient'?'Room settings saved':'Signed in');

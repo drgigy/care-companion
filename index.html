@@ -1,11 +1,88 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aster Care companion · Your room</title><link rel="stylesheet" href="styles.css"></head>
-<body data-page="patient">
-<header><div class="brand" aria-label="Aster Care companion powered by WOYZ"><span class="brand-icon">✳</span><span class="brand-copy"><span>Aster Care companion</span><small>powered by WOYZ</small></span></div><div class="top-room-status"><span id="header-room">Room 201</span><span class="top-help">Immediate help: use bedside nurse call button.</span></div><div class="header-right"><span class="connection" id="connection" hidden>Local demo</span><button class="text-button" id="staff">Staff</button><button class="text-button" id="account">Settings</button></div></header>
-<main class="patient-layout">
-<section class="welcome"><div class="room-label"><span class="room-icon">⌂</span><div><small>YOU’RE IN</small><strong id="room">Room 201</strong></div></div><aside class="urgent-note"><span>＋</span><p>Need immediate help?<br><strong>Please use your bedside nurse call button.</strong></p></aside><div class="service-caption" hidden>HOW WE CAN HELP</div><div class="services" id="services"></div></section>
-<section class="companion-card"><div class="patient-clock" aria-live="polite"><div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div><p id="patient-date">Sunday 11 October</p><i></i></div><span id="session-state" hidden>Ready when you are</span><div class="avatar-zone"><div class="avatar-halo"></div><div class="avatar" id="avatar" aria-label="Friendly care companion"><div class="eye left"></div><div class="eye right"></div><div class="cheek left"></div><div class="cheek right"></div><div class="smile"></div></div><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><h2 id="companion-heading" hidden>Hello, I’m your care companion.</h2><p class="companion-description" id="companion-description" hidden>Tap below and tell me what you need.<br>We’ll take it from there.</p><button class="primary start" id="start"><span>◉</span> Start a conversation <span>→</span></button><div id="session-controls" hidden><button class="secondary" id="mic">Enable demo microphone</button><button class="secondary" id="end">Stop conversation</button></div><p class="mode-note" id="mode-note" hidden></p><div class="chat" id="chat" aria-live="polite" hidden></div><form id="message-form" hidden><label class="sr-only" for="message">Type your request</label><input id="message" maxlength="500" placeholder="Or type what you need…" autocomplete="off" required><button class="send" aria-label="Send message">↑</button></form><div class="pending" id="pending" hidden></div><div class="patient-requests" id="patient-requests"></div></section>
-</main><footer><span>Aster Care Companion<br><small>Powered by WOYZ</small></span><a href="dashboard.html" target="_blank" rel="noopener">Open staff dashboard ↗</a></footer>
-<dialog id="login-dialog"><form id="login-form"><div class="eyebrow">ROOM SETTINGS</div><h2>Settings</h2><p id="login-help">Enter the PIN to change this tablet’s room number or sign out.</p><label id="settings-pin-label">PIN<input id="settings-pin" type="password" maxlength="4" inputmode="numeric" autocomplete="off"></label><label id="demo-room-label" hidden>Room selection<input id="demo-room" maxlength="12" value="204" pattern="[A-Za-z0-9 -]+"></label><div id="live-login" hidden><label>Email<input id="email" type="email" autocomplete="username"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label></div><p class="error" id="login-error" role="alert"></p><div class="dialog-actions"><button class="primary" id="settings-submit">Unlock</button><button class="secondary" id="close-login" type="button">Close</button><button class="text-button" id="logout" type="button" hidden>Log out</button></div></form></dialog>
-<dialog id="staff-dialog"><form id="staff-form"><div class="eyebrow">BEDSIDE STAFF</div><h2>Complete a request</h2><p id="staff-help">Select an acknowledged request, enter your employee ID, then save completion.</p><div id="staff-completion"><div class="staff-request-list" id="staff-request-list"></div><label>Employee ID<input id="staff-employee-id" autocomplete="off" required></label></div><p class="error" id="staff-error" role="alert"></p><div class="dialog-actions"><button class="primary" id="staff-save">Save completion</button><button class="secondary" id="staff-close" type="button">Close</button></div></form></dialog>
-<div class="toast" id="toast" role="status" hidden></div><script type="module" src="patient.js?v=staff-simple"></script></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aster Care companion · Your room</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="patient" data-theme="day">
+<header class="patient-topbar">
+  <div class="room-chip"><strong id="header-room">Room 201</strong><span></span><small id="header-ward">Neuro Ward</small></div>
+  <div class="patient-actions">
+    <div class="language-tabs" id="language-tabs" aria-label="Patient language">
+      <button data-language="auto" class="selected">Auto</button>
+      <button data-language="english">English</button>
+      <button data-language="malayalam">മലയാളം</button>
+      <button data-language="arabic">العربية</button>
+    </div>
+    <button class="text-button display-toggle" id="display-mode">Auto · Day</button>
+    <button class="text-button" id="staff">Staff</button>
+    <button class="text-button" id="account">Settings</button>
+  </div>
+</header>
+<main class="patient-main">
+  <section class="talk-panel">
+    <div class="patient-clock" aria-live="polite">
+      <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
+      <p id="patient-date">Monday 12 October</p>
+    </div>
+    <button class="talk-button" id="start" aria-label="Start conversation">
+      <span class="mic-icon">♬</span>
+    </button>
+    <button class="secondary stop-talk" id="end" hidden>Stop conversation</button>
+    <h1 id="tap-title">Tap to talk</h1>
+    <p class="tap-subtitle" id="tap-subtitle">സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث</p>
+    <div class="helper-card" id="helper-card"></div>
+    <div class="patient-requests" id="patient-requests" aria-live="polite"></div>
+    <div class="chat" id="chat" aria-live="polite" hidden></div>
+    <div class="pending" id="pending" hidden></div>
+    <p class="emergency-note" id="emergency-note">For emergencies, press the nurse call button on your bed.</p>
+  </section>
+</main>
+<footer><span>Aster Care Companion<br><small>Powered by WOYZ</small></span></footer>
+<dialog id="login-dialog">
+  <form id="login-form">
+    <div class="eyebrow" id="settings-eyebrow">ROOM SETTINGS</div>
+    <h2 id="settings-title">Settings</h2>
+    <p id="login-help">Sign in once on this device. The room opens automatically after that.</p>
+    <label id="settings-pin-label">PIN<input id="settings-pin" type="password" maxlength="8" inputmode="numeric" autocomplete="off"></label>
+    <div class="settings-grid" id="settings-grid">
+      <label>Room number<input id="demo-room" maxlength="12" value="201" pattern="[A-Za-z0-9 -]+"></label>
+      <label>Ward / unit<input id="ward-unit" maxlength="40" value="Neuro Ward"></label>
+      <label>Patient name <small>Optional</small><input id="patient-name" maxlength="80" autocomplete="off"></label>
+      <label>UHID <small>Optional</small><input id="patient-uhid" maxlength="40" autocomplete="off"></label>
+      <label>Patient language<select id="setting-language"><option value="auto">Auto-detect</option><option value="english">English</option><option value="malayalam">മലയാളം</option><option value="arabic">العربية</option></select></label>
+      <label>Display<select id="setting-display"><option value="auto">Auto by time</option><option value="day">Always day</option><option value="night">Always night</option></select></label>
+      <label>Night starts<select id="night-start"></select></label>
+      <label>Night ends<select id="night-end"></select></label>
+      <label>New PIN <small>Optional</small><input id="new-pin" maxlength="8" inputmode="numeric" autocomplete="off"></label>
+      <label>Confirm new PIN<input id="confirm-pin" maxlength="8" inputmode="numeric" autocomplete="off"></label>
+    </div>
+    <div id="live-login" hidden>
+      <label>Email<input id="email" type="email" autocomplete="username"></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password"></label>
+    </div>
+    <p class="error" id="login-error" role="alert"></p>
+    <div class="dialog-actions"><button class="text-button danger" id="logout" type="button" hidden>Log out tablet</button><span></span><button class="secondary" id="close-login" type="button">Cancel</button><button class="primary" id="settings-submit">Sign in</button></div>
+  </form>
+</dialog>
+<dialog id="staff-dialog">
+  <form id="staff-form">
+    <div class="eyebrow">BEDSIDE STAFF · <span id="staff-room-label">Room 201</span></div>
+    <h2>Update a request</h2>
+    <p id="staff-help">Select the request you are attending to, enter your employee ID, then save.</p>
+    <div class="staff-request-list" id="staff-request-list"></div>
+    <label>Employee ID<input id="staff-employee-id" autocomplete="off" required></label>
+    <p class="error" id="staff-error" role="alert"></p>
+    <div class="dialog-actions"><a href="dashboard.html" target="_blank" rel="noopener">Open staff station</a><button class="secondary" id="staff-close" type="button">Close</button><button class="primary" id="staff-save">Save completion</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+<span class="connection" id="connection" hidden>Local demo</span>
+<form id="message-form" hidden><input id="message"><button>Send</button></form>
+<button id="mic" hidden></button>
+<div id="session-controls" hidden></div>
+<script type="module" src="patient.js?v=major-redesign"></script>
+</body>
+</html>
