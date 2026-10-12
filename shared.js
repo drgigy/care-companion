@@ -28,7 +28,7 @@ export function guessCategory(text) {
 const DEMO_KEY='care-companion-requests-v1';
 const ROOM_KEY='care-companion-room-v1';
 const SETTINGS_KEY='care-companion-tablet-settings-v1';
-const defaultSettings={ward:'Neuro Ward',patientName:'',uhid:'',language:'auto',display:'auto',nightStart:'18',nightEnd:'7',pin:'1234'};
+const defaultSettings={ward:'Neuro Ward',patientName:'',uhid:'',language:'malayalam',display:'auto',nightStart:'18',nightEnd:'7',pin:'1234'};
 export function loadTabletSettings(){try{return {...defaultSettings,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')};}catch{return {...defaultSettings};}}
 export function saveTabletSettings(settings){const clean={...defaultSettings,...settings};localStorage.setItem(SETTINGS_KEY,JSON.stringify(clean));return clean;}
 export class CareStore {

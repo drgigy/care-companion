@@ -27,6 +27,15 @@ export class LiveCompanion {
     return {GoogleGenAI:module.GoogleGenAI,result,createdAt:Date.now()};
   }
   constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;this.lastPatientText='';this.endConfirmationAsked=false;}
+  languageInstruction(languageMode){
+    const greetings={
+      english:'Welcome to Aster Medicity. How can I assist you?',
+      malayalam:'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ താങ്കളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?',
+      arabic:'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟'
+    };
+    if(languageMode==='auto')return `The patient pressed Start. The tablet language is auto. Start in Malayalam with exactly: "${greetings.malayalam}" Then use the patient's main language. Use the configured voice and keep the tone consistent. The request_care summary must stay in English.`;
+    return `The patient pressed Start. The tablet language is ${languageMode}. Start with exactly this ${languageMode} greeting and do not translate or replace it: "${greetings[languageMode]||greetings.malayalam}" Every spoken reply must be only ${languageMode}. Do not say any English words or English sentences when ${languageMode} is selected, except the English request_care summary that staff will read. Keep the Aster Medicity welcome, department confirmation, anything-else question, and final thank-you/get-well-soon message in ${languageMode} only, even if the patient uses words from another language. Use the configured female voice and keep the tone consistently calm, empathetic, and hospital-appropriate. Follow the scripted flow exactly: listen, clarify only if needed, ask whether to inform the correct department, wait for confirmation, send the request, ask if anything else is needed, and end only after the patient says no. Say the final thank-you/get-well-soon closing only once, immediately before ending. The request_care summary must stay in English.`;
+  }
   async start(){
     const generation=++this.generation;
     try{
@@ -54,9 +63,7 @@ export class LiveCompanion {
       };
       this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
       const languageMode=this.callbacks.languageMode||'auto';
-      const instruction=languageMode==='auto'
-        ?"The patient pressed Start. The tablet language is auto. Start in Malayalam with: \"ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ താങ്കളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?\" Then use the patient's main language. Use the configured voice and keep the tone consistent. The request_care summary must stay in English."
-        :`The patient pressed Start. The tablet language is ${languageMode}. Start by saying "Welcome to Aster Medicity. How can I assist you?" translated fully and naturally into ${languageMode}. All spoken replies must be only ${languageMode}, including the Aster Medicity welcome and the final thank-you/get-well-soon message, even if the patient uses words from another language. Use the configured female voice and keep the tone consistently calm, empathetic, and hospital-appropriate. Follow the scripted flow exactly: listen, clarify only if needed, ask whether to inform the correct department, wait for confirmation, send the request, ask if anything else is needed, and end only after the patient says no. Say the final thank-you/get-well-soon closing only once, immediately before ending. The request_care summary must stay in English.`;
+      const instruction=this.languageInstruction(languageMode);
       this.session.sendClientContent({turns:[{role:'user',parts:[{text:instruction}]}],turnComplete:true});
       this.timeout=setTimeout(()=>{if(!this.stopped)this.callbacks.onError('This conversation has reached its session limit. Please start again.');},9*60*1000);
       this.callbacks.onState('Listening to you');
