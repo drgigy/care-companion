@@ -6,7 +6,7 @@ import {GoogleGenAI} from '@google/genai';
 import {conversationScript,requestTool,endConversationTool} from './script.js';
 initializeApp();const db=getFirestore();const geminiKey=defineSecret('GEMINI_API_KEY');
 const liveModel='gemini-3.8-live';
-const liveVoice='Kore';
+const liveVoice='Aoede';
 // Set ALLOWED_ORIGINS to the exact production frontend origin at deployment.
 const origins=defineString('ALLOWED_ORIGINS',{default:'http://localhost:8765'});
 export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInstances:10},async request=>{
