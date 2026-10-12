@@ -107,20 +107,21 @@ export function setupAccount(store,onProfile) {
   const syncSettings=()=>{const roomInput=$('demo-room'),roomLabel=$('demo-room-label'),liveLogin=$('live-login'),submit=$('settings-submit')||$('login-form').querySelector('button.primary');
     if(roomInput&&store.profile?.room)roomInput.value=store.profile.room;
     if(store.page==='patient'){
-      if($('settings-pin-label'))$('settings-pin-label').hidden=settingsUnlocked;
-      if(roomLabel){roomLabel.hidden=!settingsUnlocked;roomInput.required=settingsUnlocked;}
-      if(liveLogin){const signedIn=!!store.profile;liveLogin.hidden=!settingsUnlocked||signedIn;$('email').required=settingsUnlocked&&!signedIn;$('password').required=settingsUnlocked&&!signedIn;}
+      const signedIn=!!store.profile;
+      if($('settings-pin-label'))$('settings-pin-label').hidden=!signedIn||settingsUnlocked;
+      if(roomLabel){roomLabel.hidden=!signedIn||!settingsUnlocked;roomInput.required=signedIn&&settingsUnlocked;}
+      if(liveLogin){liveLogin.hidden=store.demo||signedIn;$('email').required=!store.demo&&!signedIn;$('password').required=!store.demo&&!signedIn;}
       $('logout').hidden=store.demo||!store.profile||!settingsUnlocked;
-      if(submit)submit.textContent=settingsUnlocked?(store.profile?'Save room':'Sign in'):'Unlock';
-      $('login-help').textContent=settingsUnlocked?(store.profile?'Room selection and log out are available now.':'Sign in once on this device, then select the room.'):'Enter the PIN to change this tablet’s room number or sign out.';
+      if(submit)submit.textContent=signedIn?(settingsUnlocked?'Save room':'Unlock'):'Sign in';
+      $('login-help').textContent=signedIn?(settingsUnlocked?'Room selection and log out are available now.':'Enter the PIN to change this tablet’s room number or sign out.'):'Sign in once on this device. The room opens automatically after that.';
       return;
     }
     if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit){submit.hidden=signedIn;submit.textContent='Sign in';}if($('logout'))$('logout').hidden=!signedIn;$('login-help').textContent=signedIn?'You are signed in to this station.':'Sign in once on this device. The session stays signed in until staff sign out.';}
     else if(submit)submit.textContent=store.page==='patient'?'Save room':'Close';
   };
-  $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>($('settings-pin')||$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();
+  $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>((store.page==='patient'&&store.profile)?$('settings-pin'):$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();
   $('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const submit=e.target.querySelector('button.primary');submit.disabled=true;try{
-    if(store.page==='patient'&&!settingsUnlocked){if($('settings-pin').value!=='1234')throw Error('Incorrect PIN.');settingsUnlocked=true;syncSettings();setTimeout(()=>($('demo-room')||$('email'))?.focus(),50);return;}
+    if(store.page==='patient'&&store.profile&&!settingsUnlocked){if($('settings-pin').value!=='1234')throw Error('Incorrect PIN.');settingsUnlocked=true;syncSettings();setTimeout(()=>($('demo-room')||$('email'))?.focus(),50);return;}
     if(store.page==='patient'&&(store.demo||store.profile))await store.changeRoom($('demo-room')?.value.trim());
     else if(!store.demo&&!store.profile)await store.login($('email').value,$('password').value,$('demo-room')?.value.trim());
     $('login-dialog').close();if($('password'))$('password').value='';toast(store.page==='patient'?'Room settings saved':'Signed in');
