@@ -85,8 +85,8 @@ export class LiveCompanion {
     for(const call of calls){
       if(this.stopped)return;let response;
       if(call.name==='end_conversation'){
-        if(this.closingStarted)response={status:'ending'};
-        else if(this.hasPatientEndConfirmation()){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
+        if(this.closingStarted)return;
+        if(this.hasPatientEndConfirmation()){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
         else {response={status:'needs_patient_confirmation',message:'Do not end yet. Ask whether the patient needs anything else and wait for a clear answer before calling end_conversation.'};this.endConfirmationAsked=true;}
       }
       else if(call.name!=='request_care')response={error:'Unknown tool'};
@@ -114,7 +114,11 @@ export class LiveCompanion {
     this.stream?.getAudioTracks().forEach(track=>track.enabled=false);
     const remaining=this.outputContext?Math.max(1500,(this.nextPlay-this.outputContext.currentTime)*1000+700):2500;
     clearTimeout(this.closeTimer);
-    this.closeTimer=setTimeout(()=>{if(!this.stopped)this.callbacks.onEnd?.({reason:'closing'});},Math.min(Math.max(remaining,1500),6500));
+    this.closeTimer=setTimeout(()=>{
+      if(this.stopped)return;
+      try{this.session?.close();}catch{}
+      this.callbacks.onEnd?.({reason:'closing'});
+    },Math.min(Math.max(remaining,1500),6500));
   }
   hasPatientEndConfirmation(){
     const text=(this.lastPatientText||'').toLowerCase().trim();
