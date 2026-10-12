@@ -39,7 +39,7 @@ async function start(){
   if(active||starting)return;if(!store.profile){$('login-dialog').showModal();return;}
   starting=true;$('start').disabled=true;
   try{
-    setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ എങ്ങനെയാണ് നിങ്ങളെ സഹായിക്കേണ്ടത്?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
+    setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ താങ്കളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
       live=new LiveCompanion(store,{languageMode:language(),onText:text=>bubble(text),onState:setVoiceState,onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(),onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);
