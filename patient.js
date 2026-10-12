@@ -2,10 +2,10 @@ import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAcco
 import {LiveCompanion} from './voice.js';
 const store=new CareStore('patient');let active=false,live=null,starting=false,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
 const langText={
-  auto:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:"അടിയന്തര സാഹചര്യങ്ങളിൽ ബെഡിനടുത്തുള്ള 'നഴ്സ് കോൾ' ബട്ടൺ അമർത്തുക.",requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
-  english:{tap:'Tap here to speak',sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the nurse call button beside your bed.',requests:'Your requests'},
-  malayalam:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:"അടിയന്തര സാഹചര്യങ്ങളിൽ ബെഡിനടുത്തുള്ള 'നഴ്സ് കോൾ' ബട്ടൺ അമർത്തുക.",requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
-  arabic:{tap:'اضغط هنا للتحدث',sub:'تحدث هنا لطلب ممرضة أو طعام أو تنظيف الغرفة أو الحسابات أو الشكاوى أو أي طلب آخر.',help:[],emergency:'في الحالات الطارئة، اضغط زر استدعاء الممرضة بجانب السرير.',requests:'طلباتك'}
+  auto:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
+  english:{tap:'Tap here to speak',sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the Nurse Call button.',requests:'Your requests'},
+  malayalam:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
+  arabic:{tap:'اضغط هنا للتحدث',sub:'تحدث هنا لطلب ممرضة أو طعام أو تنظيف الغرفة أو الحسابات أو الشكاوى أو أي طلب آخر.',help:[],emergency:'في الحالات الطارئة، اضغط زر Nurse Call.',requests:'طلباتك'}
 };
 const languageName={auto:'Auto',english:'English',malayalam:'മലയാളം',arabic:'العربية'};
 const categoryLabel=key=>categories[key]?.label||'Request';
