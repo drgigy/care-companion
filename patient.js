@@ -15,7 +15,11 @@ function displayLanguage(){return language()==='auto'?'auto':language();}
 function detectLanguage(text){if(/[\u0600-\u06FF]/.test(text))return 'arabic';if(/[\u0D00-\u0D7F]/.test(text))return 'malayalam';return 'english';}
 function requestLanguage(text){return language()==='auto'?detectLanguage(text):language();}
 function bubble(text,user=false){const div=document.createElement('div');div.className='bubble'+(user?' user':'');div.textContent=text;$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight;}
-function speak(text,lang='english',force=false){if((!force&&!store.demo)||!('speechSynthesis'in window))return;speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.rate=.92;utterance.lang=lang==='malayalam'?'ml-IN':lang==='arabic'?'ar-SA':'en-IN';speechSynthesis.speak(utterance);}
+function setVoiceState(label=''){
+  const normalized=String(label).toLowerCase();
+  document.body.dataset.voiceState=normalized.includes('speak')?'speaking':normalized.includes('listen')?'listening':active?'listening':'idle';
+}
+function speak(text,lang='english',force=false){if((!force&&!store.demo)||!('speechSynthesis'in window))return;speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.rate=.92;utterance.lang=lang==='malayalam'?'ml-IN':lang==='arabic'?'ar-SA':'en-IN';utterance.onstart=()=>setVoiceState('speaking');utterance.onend=()=>setVoiceState(active?'listening':'idle');utterance.onerror=()=>setVoiceState(active?'listening':'idle');speechSynthesis.speak(utterance);}
 function isNightBySettings(){if(settings.display==='day')return false;if(settings.display==='night')return true;const hour=new Date().getHours(),start=Number(settings.nightStart??18),end=Number(settings.nightEnd??7);return start<end?hour>=start&&hour<end:hour>=start||hour<end;}
 function updateTheme(){const now=new Date(),night=isNightBySettings(),time=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});document.body.dataset.theme=night?'night':'day';$('patient-time').textContent=time.replace(/\s?[AP]M$/i,'');$('patient-period').textContent=time.match(/AM|PM/i)?.[0]||'';$('patient-date').textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});$('display-mode').textContent=(settings.display==='auto'?'☼ Auto · ':'')+(night?'Night':'Day');}
 function syncSettingsToUI(){
@@ -27,7 +31,7 @@ function syncSettingsToUI(){
   $('setting-language').value=language();$('setting-display').value=settings.display;$('ward-unit').value=settings.ward;$('patient-name').value=settings.patientName;$('patient-uhid').value=settings.uhid;$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;if(store.profile)$('demo-room').value=store.profile.room;
   const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('emergency-note').textContent=copy.emergency;updateTheme();
 }
-function setSession(value){active=value;$('start').hidden=value;$('end').hidden=!value;$('chat').hidden=!value;document.body.classList.toggle('conversation-active',value);}
+function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
 function end(){starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;}
 function scheduleAutoEnd(delay=1300){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}
 async function start(){
@@ -36,13 +40,13 @@ async function start(){
   try{
     setSession(true);const lang=requestLanguage('');const greeting=lang==='malayalam'?'നമസ്കാരം. നിങ്ങൾക്ക് എന്ത് സഹായം വേണം?':lang==='arabic'?'مرحباً. كيف يمكنني مساعدتك؟':'Hello. What do you need?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
-      live=new LiveCompanion(store,{languageMode:language(),onText:text=>bubble(text),onState:()=>{},onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(),onRequest:async args=>{
+      live=new LiveCompanion(store,{languageMode:language(),onText:text=>bubble(text),onState:setVoiceState,onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(),onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);
         try{const id=await store.create(args.category,args.summary,crypto.randomUUID(),lang);toast(`Request sent · ${categoryLabel(args.category)}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved.'};}
       }});
       await live.start();if(!live||live.stopped)throw Error('The voice session closed before it was ready. Please start again.');
     }
-  }catch(error){end();toast('Could not start: '+error.message);}finally{starting=false;$('start').disabled=!store.profile;}
+  }catch(error){end();toast('Could not start: '+error.message);}finally{starting=false;$('start').disabled=active||!store.profile;}
 }
 function showConfirmation(category,summary,id,patientLanguage){$('pending').hidden=false;$('pending').innerHTML=`<p>${escapeHTML(summary)}</p><button class="primary" id="confirm-request">Send request</button> <button class="text-button" id="cancel-request">Cancel</button>`;$('confirm-request').onclick=async()=>{try{await store.create(category,summary,id||crypto.randomUUID(),patientLanguage);$('pending').hidden=true;toast('Request sent');}catch(error){toast(error.message);}};$('cancel-request').onclick=()=>$('pending').hidden=true;}
 function handleTyped(text){bubble(text,true);const lang=requestLanguage(text),category=guessCategory(text)||'guestRelations';showConfirmation(category,text,null,lang);}
