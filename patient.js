@@ -32,13 +32,14 @@ function syncSettingsToUI(){
   const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('emergency-note').textContent=copy.emergency;updateTheme();
 }
 function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
-function end(){starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;}
+function warmVoice(){if(store.profile&&!store.demo)LiveCompanion.warm(store).catch(()=>{});}
+function end(){starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;warmVoice();}
 function scheduleAutoEnd(delay=3500){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}
 async function start(){
   if(active||starting)return;if(!store.profile){$('login-dialog').showModal();return;}
   starting=true;$('start').disabled=true;
   try{
-    setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'Aster Medicity-ലേക്ക് സ്വാഗതം. എങ്ങനെ സഹായിക്കാം?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
+    setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. എങ്ങനെ സഹായിക്കാം?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
       live=new LiveCompanion(store,{languageMode:language(),onText:text=>bubble(text),onState:setVoiceState,onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(),onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);
@@ -65,7 +66,7 @@ $('staff').onclick=()=>{if(active)end();selectedCompletionId=null;$('staff-error
 $('staff-form').onsubmit=async e=>{e.preventDefault();$('staff-error').textContent='';try{if(!selectedCompletionId)throw Error('Select an acknowledged request first.');await store.completeAtRoom(selectedCompletionId,'Staff',$('staff-employee-id').value);toast('Request completed');$('staff-dialog').close();$('staff-employee-id').value='';}catch(error){$('staff-error').textContent=error.message;}};
 store.subscribe(items=>{for(const r of items.filter(r=>r.room===store.profile?.room)){const previous=requestState.get(r.id);if(requestLoaded&&previous==='new'&&r.status==='in-progress'){const lang=r.patientLanguage||'english';const message=lang==='malayalam'?'നിങ്ങളുടെ അഭ്യർത്ഥന സ്റ്റാഫ് അംഗീകരിച്ചു.':lang==='arabic'?'تم قبول طلبك.':'Your request has been accepted.';toast(message);speak(message,lang,true);}}requestState=new Map(items.map(r=>[r.id,r.status]));requestLoaded=true;renderPatientRequests();if($('staff-dialog').open)renderStaffRequests();});
 function fillSettings(){syncSettingsToUI();$('new-pin').value='';$('confirm-pin').value='';}
-const initialize=setupAccount(store,(profile)=>{if(profile&&!store.demo)LiveCompanion.preload();fillSettings();$('start').disabled=!profile;if(!profile)$('patient-requests').replaceChildren();else store.emit();});
+const initialize=setupAccount(store,(profile)=>{if(profile&&!store.demo)warmVoice();fillSettings();$('start').disabled=!profile;if(!profile)$('patient-requests').replaceChildren();else store.emit();});
 $('login-form').addEventListener('submit',event=>{if(store.profile&&$('new-pin').value&&$('new-pin').value!==$('confirm-pin').value){event.preventDefault();event.stopImmediatePropagation();$('login-error').textContent='New PIN does not match.';return;}if(store.profile&&$('new-pin').value)settings.pin=$('new-pin').value;settings={...settings,ward:$('ward-unit').value.trim()||'Ward',patientName:$('patient-name').value.trim(),uhid:$('patient-uhid').value.trim(),language:$('setting-language').value,display:$('setting-display').value,nightStart:$('night-start').value,nightEnd:$('night-end').value};settings=saveTabletSettings(settings);syncSettingsToUI();},true);
 updateTheme();setInterval(updateTheme,30000);
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';$('start').disabled=true;});

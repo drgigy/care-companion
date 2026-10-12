@@ -7,6 +7,25 @@ function loadGenAI(){
 }
 export class LiveCompanion {
   static preload(){loadGenAI().catch(()=>{});}
+  static warm(store){
+    if(this.tokenPromise)return this.tokenPromise;
+    this.tokenPromise=Promise.all([loadGenAI(),store.call('liveToken',{})])
+      .then(([module,result])=>({GoogleGenAI:module.GoogleGenAI,result,createdAt:Date.now()}))
+      .catch(error=>{this.tokenPromise=null;throw error;});
+    return this.tokenPromise;
+  }
+  static async takeWarmToken(store){
+    const warm=this.tokenPromise;
+    if(warm){
+      this.tokenPromise=null;
+      try{
+        const prepared=await warm;
+        if(Date.now()-prepared.createdAt<50000)return prepared;
+      }catch{}
+    }
+    const [module,result]=await Promise.all([loadGenAI(),store.call('liveToken',{})]);
+    return {GoogleGenAI:module.GoogleGenAI,result,createdAt:Date.now()};
+  }
   constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;this.lastPatientText='';this.endConfirmationAsked=false;}
   async start(){
     const generation=++this.generation;
@@ -16,7 +35,7 @@ export class LiveCompanion {
       this.outputContext=new AudioContext({sampleRate:24000});await this.outputContext.resume();
       this.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
       if(this.stopped||generation!==this.generation){this.stream.getTracks().forEach(t=>t.stop());return;}
-      const [{GoogleGenAI},result]=await Promise.all([loadGenAI(),this.store.call('liveToken',{})]);
+      const {GoogleGenAI,result}=await LiveCompanion.takeWarmToken(this.store);
       if(this.stopped)return;
       const {token,model,liveConfig}=result.data;const ai=new GoogleGenAI({apiKey:token,httpOptions:{apiVersion:'v1beta'}});
       this.session=await ai.live.connect({model,config:liveConfig,callbacks:{
@@ -36,8 +55,8 @@ export class LiveCompanion {
       this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
       const languageMode=this.callbacks.languageMode||'auto';
       const instruction=languageMode==='auto'
-        ?"The patient pressed Start. The tablet language is auto. Start in Malayalam with: \"Aster Medicity-ലേക്ക് സ്വാഗതം. എങ്ങനെ സഹായിക്കാം?\" Then use the patient's main language. The request_care summary must stay in English."
-        :`The patient pressed Start. The tablet language is ${languageMode}. Start by saying "Welcome to Aster Medicity. How can I assist you?" translated naturally into ${languageMode}. All spoken replies must be only ${languageMode}, even if the patient uses words from another language. The request_care summary must stay in English.`;
+        ?"The patient pressed Start. The tablet language is auto. Start in Malayalam with: \"ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. എങ്ങനെ സഹായിക്കാം?\" Then use the patient's main language. Use the configured voice and keep the tone consistent. The request_care summary must stay in English."
+        :`The patient pressed Start. The tablet language is ${languageMode}. Start by saying "Welcome to Aster Medicity. How can I assist you?" translated fully and naturally into ${languageMode}. All spoken replies must be only ${languageMode}, including the Aster Medicity welcome, even if the patient uses words from another language. Use the configured voice and keep the tone consistent. The request_care summary must stay in English.`;
       this.session.sendClientContent({turns:[{role:'user',parts:[{text:instruction}]}],turnComplete:true});
       this.timeout=setTimeout(()=>{if(!this.stopped)this.callbacks.onError('This conversation has reached its session limit. Please start again.');},9*60*1000);
       this.callbacks.onState('Listening to you');
