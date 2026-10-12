@@ -1,5 +1,15 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js';
 const store=new CareStore('dashboard');let selected='all',view='active',items=[],seen=new Set(),loaded=false,sound=false,audio=null,ackId=null;
+function setSidebarCollapsed(value){
+  document.body.classList.toggle('sidebar-collapsed',value);
+  localStorage.setItem('dashboardSidebarCollapsed',value?'1':'0');
+  const toggle=$('sidebar-toggle');
+  toggle.textContent=value?'›':'‹';
+  toggle.setAttribute('aria-expanded',String(!value));
+  toggle.setAttribute('aria-label',value?'Expand departments':'Collapse departments');
+}
+setSidebarCollapsed(localStorage.getItem('dashboardSidebarCollapsed')==='1');
+$('sidebar-toggle').onclick=()=>setSidebarCollapsed(!document.body.classList.contains('sidebar-collapsed'));
 const age=time=>{const mins=Math.max(0,Math.floor((Date.now()-time)/60000));return mins===0?'just now':mins<60?`${mins} min`:mins<1440?`${Math.floor(mins/60)} hr ${mins%60} min`:`${Math.floor(mins/1440)} d`;};
 function clock(){const target=$('clock');if(target)target.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}clock();setInterval(clock,30000);
 function chime(){if(!audio)return;const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.connect(gain);gain.connect(audio.destination);oscillator.frequency.value=650;gain.gain.setValueAtTime(.08,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.6);oscillator.start();oscillator.stop(audio.currentTime+.6);}
