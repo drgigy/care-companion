@@ -9,6 +9,10 @@
 <body data-page="patient" data-theme="day">
 <header class="patient-topbar">
   <div class="room-chip"><strong id="header-room">Room 201</strong><span></span><small id="header-ward">Neuro Ward</small></div>
+  <div class="patient-clock" aria-live="polite">
+    <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
+    <p id="patient-date">Monday 12 October</p>
+  </div>
   <div class="patient-actions">
     <div class="language-tabs" id="language-tabs" aria-label="Patient language">
       <button data-language="auto">Auto</button>
@@ -23,10 +27,6 @@
 </header>
 <main class="patient-main">
   <section class="talk-panel">
-    <div class="patient-clock" aria-live="polite">
-      <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
-      <p id="patient-date">Monday 12 October</p>
-    </div>
     <button class="talk-button" id="start" aria-label="Start conversation">
       <span class="mic-icon" aria-hidden="true"><i></i></span>
     </button>
@@ -35,6 +35,7 @@
     <p class="tap-subtitle" id="tap-subtitle">സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث</p>
     <div class="helper-card" id="helper-card"></div>
     <p class="emergency-note" id="emergency-note">For emergencies, press the nurse call button on your bed.</p>
+    <h2 class="requests-title" id="requests-title">Your requests</h2>
     <div class="patient-requests" id="patient-requests" aria-live="polite"></div>
     <div class="chat" id="chat" aria-live="polite" hidden></div>
     <div class="pending" id="pending" hidden></div>
