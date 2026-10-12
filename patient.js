@@ -33,12 +33,12 @@ function syncSettingsToUI(){
 }
 function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
 function end(){starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;}
-function scheduleAutoEnd(delay=1300){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}
+function scheduleAutoEnd(delay=3500){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}
 async function start(){
   if(active||starting)return;if(!store.profile){$('login-dialog').showModal();return;}
   starting=true;$('start').disabled=true;
   try{
-    setSession(true);const lang=requestLanguage('');const greeting=lang==='malayalam'?'നമസ്കാരം. നിങ്ങൾക്ക് എന്ത് സഹായം വേണം?':lang==='arabic'?'مرحباً. كيف يمكنني مساعدتك؟':'Hello. What do you need?';bubble(greeting);speak(greeting,lang);
+    setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'Aster Medicity-ലേക്ക് സ്വാഗതം. എങ്ങനെ സഹായിക്കാം?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
       live=new LiveCompanion(store,{languageMode:language(),onText:text=>bubble(text),onState:setVoiceState,onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(),onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);

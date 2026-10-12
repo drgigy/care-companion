@@ -7,7 +7,7 @@ function loadGenAI(){
 }
 export class LiveCompanion {
   static preload(){loadGenAI().catch(()=>{});}
-  constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;}
+  constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;this.lastPatientText='';this.endConfirmationAsked=false;}
   async start(){
     const generation=++this.generation;
     try{
@@ -36,8 +36,8 @@ export class LiveCompanion {
       this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
       const languageMode=this.callbacks.languageMode||'auto';
       const instruction=languageMode==='auto'
-        ?"The patient pressed Start. Greet them briefly and then use the patient's main language. The request_care summary must stay in English."
-        :`The patient pressed Start. The tablet language is ${languageMode}. All spoken replies must be only ${languageMode}, even if the patient uses words from another language. The request_care summary must stay in English.`;
+        ?"The patient pressed Start. The tablet language is auto. Start in Malayalam with: \"Aster Medicity-ലേക്ക് സ്വാഗതം. എങ്ങനെ സഹായിക്കാം?\" Then use the patient's main language. The request_care summary must stay in English."
+        :`The patient pressed Start. The tablet language is ${languageMode}. Start by saying "Welcome to Aster Medicity. How can I assist you?" translated naturally into ${languageMode}. All spoken replies must be only ${languageMode}, even if the patient uses words from another language. The request_care summary must stay in English.`;
       this.session.sendClientContent({turns:[{role:'user',parts:[{text:instruction}]}],turnComplete:true});
       this.timeout=setTimeout(()=>{if(!this.stopped)this.callbacks.onError('This conversation has reached its session limit. Please start again.');},9*60*1000);
       this.callbacks.onState('Listening to you');
@@ -51,12 +51,16 @@ export class LiveCompanion {
     if(content?.outputTranscription?.text){
       const text=content.outputTranscription.text;this.transcript=(this.transcript||'')+text;
     }
+    if(content?.inputTranscription?.text)this.lastPatientText=((this.lastPatientText||'')+' '+content.inputTranscription.text).slice(-320);
     for(const part of content?.modelTurn?.parts||[])if(part.inlineData?.data&&part.inlineData.mimeType?.startsWith('audio/pcm'))this.play(part.inlineData.data);
-    if(content?.turnComplete){if(this.transcript){this.callbacks.onText(this.transcript);this.transcript='';}this.callbacks.onState('Listening to you');}
+    if(content?.turnComplete){if(this.transcript){this.noteAssistantTurn(this.transcript);this.callbacks.onText(this.transcript);this.transcript='';}this.callbacks.onState('Listening to you');}
     const calls=message.toolCall?.functionCalls||[];
     for(const call of calls){
       if(this.stopped)return;let response;
-      if(call.name==='end_conversation'){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
+      if(call.name==='end_conversation'){
+        if(this.hasPatientEndConfirmation()){response={status:'ending'};this.callbacks.onEnd?.(call.args||{});}
+        else {response={status:'needs_patient_confirmation',message:'Do not end yet. Ask whether the patient needs anything else and wait for a clear answer before calling end_conversation.'};this.endConfirmationAsked=true;}
+      }
       else if(call.name!=='request_care')response={error:'Unknown tool'};
       else if(this.processed.has(call.id))response=await this.processed.get(call.id);
       else {
@@ -66,6 +70,16 @@ export class LiveCompanion {
       }
       if(!this.stopped)this.session.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response}]});
     }
+  }
+  noteAssistantTurn(text){
+    const normalized=text.toLowerCase();
+    if(/anything else|need anything|okay to stop|ok to stop|stop now|end now|close now|മറ്റെന്തെങ്കിലും|ഇനി എന്തെങ്കിലും|നിർത്തട്ടെ|അവസാനിപ്പിക്കട്ടെ|أي شيء آخر|هل تحتاج|يمكنني الإنهاء|أنهي الآن/.test(normalized))this.endConfirmationAsked=true;
+  }
+  hasPatientEndConfirmation(){
+    const text=(this.lastPatientText||'').toLowerCase().trim();
+    if(!text)return false;
+    if(/(nothing else|no nothing|no thank|that's all|that is all|stop now|end now|close now|you can stop|please stop|മതി|വേണ്ട|ഇല്ല|നിർത്താം|അവസാനിപ്പിക്കാം|لا شكرا|لا شكرًا|خلاص|انتهى|أوقف|اوقف|يمكنك الإنهاء)/.test(text))return true;
+    return this.endConfirmationAsked&&/\b(yes|yeah|yep|ok|okay|sure|correct)\b|അതെ|ശരി|نعم|تمام|حسنا|حسنًا/.test(text);
   }
   play(base64){
     if(this.stopped)return;const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));const view=new DataView(bytes.buffer),buffer=this.outputContext.createBuffer(1,bytes.length/2,24000),channel=buffer.getChannelData(0);
