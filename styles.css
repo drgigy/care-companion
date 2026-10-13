@@ -257,7 +257,7 @@ body[data-page=patient] .room-chip span,body[data-page=patient] .room-chip small
 .mobile-language-pill{gap:7px;padding:0 14px;font-size:14px}.mobile-language-pill span{font-size:16px;opacity:.9}.mobile-menu-button{width:40px;padding:0;font-size:18px;letter-spacing:1px}
 body[data-page=patient] .patient-actions{position:fixed;left:0;right:0;bottom:0;z-index:21;display:grid!important;grid-template-columns:1fr 1fr;gap:12px;width:auto;padding:18px 18px max(22px,env(safe-area-inset-bottom));background:var(--patient-panel);border-radius:24px 24px 0 0;box-shadow:0 -18px 50px #14251c2b;transform:translateY(105%);transition:transform .22s ease;color:var(--patient-ink)}
 body[data-page=patient].mobile-menu-open .patient-actions{transform:translateY(0)}
-.mobile-menu-backdrop{position:fixed;inset:0;z-index:20;border:0;background:#16241d66;backdrop-filter:blur(1px)}
+.mobile-menu-backdrop{position:fixed;inset:0;z-index:4;border:0;background:#16241d66;backdrop-filter:blur(1px)}
 body[data-page=patient].mobile-menu-open .mobile-menu-backdrop{display:block}
 .sheet-handle{display:block;grid-column:1/-1;justify-self:center;width:44px;height:4px;border-radius:999px;background:#d8dfda;margin:-6px 0 8px}
 .sheet-label{display:block;grid-column:1/-1;color:var(--patient-muted);font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;text-align:left}
