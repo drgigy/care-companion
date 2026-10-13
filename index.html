@@ -13,7 +13,11 @@
     <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
     <p id="patient-date">Monday 12 October</p>
   </div>
+  <button class="mobile-language-pill" id="mobile-language-pill" type="button" aria-label="Change language"><span aria-hidden="true">◎</span><strong id="mobile-language-label">Auto</strong></button>
+  <button class="mobile-menu-button" id="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false">•••</button>
   <div class="patient-actions">
+    <span class="sheet-handle" aria-hidden="true"></span>
+    <span class="sheet-label">Language</span>
     <div class="language-tabs" id="language-tabs" aria-label="Patient language">
       <button data-language="auto">Auto</button>
       <button data-language="english">English</button>
@@ -21,10 +25,12 @@
       <button data-language="arabic">العربية</button>
     </div>
     <button class="text-button display-toggle" id="display-mode">Auto · Day</button>
+    <span class="sheet-label staff-label">For hospital staff</span>
     <button class="text-button" id="staff">Staff</button>
     <button class="text-button" id="account">Settings</button>
   </div>
 </header>
+<button class="mobile-menu-backdrop" id="mobile-menu-backdrop" type="button" aria-label="Close menu" hidden></button>
 <main class="patient-main">
   <section class="talk-panel">
     <button class="talk-button" id="start" aria-label="Start conversation">

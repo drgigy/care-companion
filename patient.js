@@ -34,8 +34,14 @@ function syncSettingsToUI(){
   $('staff-room-label').textContent=store.profile?'Room '+store.profile.room:'Room';
   store.setContext({ward:settings.ward,patientName:settings.patientName,uhid:settings.uhid});
   document.querySelectorAll('#language-tabs button').forEach(button=>button.classList.toggle('selected',button.dataset.language===language()));
+  $('mobile-language-label').textContent=languageName[language()]||'Auto';
   $('setting-language').value=language();$('setting-display').value=settings.display;$('ward-unit').value=settings.ward;$('patient-name').value=settings.patientName;$('patient-uhid').value=settings.uhid;$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;if(store.profile)$('demo-room').value=store.profile.room;
   const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('requests-title').textContent=copy.requests;updateTheme();
+}
+function setMobileMenu(open){
+  document.body.classList.toggle('mobile-menu-open',open);
+  $('mobile-menu-button').setAttribute('aria-expanded',String(open));
+  $('mobile-menu-backdrop').hidden=!open;
 }
 function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
 function warmVoice(){if(store.profile&&!store.demo)LiveCompanion.warm(store).catch(()=>{});}
@@ -57,10 +63,11 @@ async function start(){
 }
 function showConfirmation(category,summary,id,patientLanguage){$('pending').hidden=false;$('pending').innerHTML=`<p>${escapeHTML(summary)}</p><button class="primary" id="confirm-request">Send request</button> <button class="text-button" id="cancel-request">Cancel</button>`;$('confirm-request').onclick=async()=>{try{await store.create(category,summary,id||crypto.randomUUID(),patientLanguage);$('pending').hidden=true;toast('Request sent');}catch(error){toast(error.message);}};$('cancel-request').onclick=()=>$('pending').hidden=true;}
 function handleTyped(text){bubble(text,true);const lang=requestLanguage(text),category=guessCategory(text)||'guestRelations';showConfirmation(category,text,null,lang);}
-$('start').onclick=start;$('end').onclick=end;$('message-form').onsubmit=e=>{e.preventDefault();const text=$('message').value.trim();$('message').value='';if(text)handleTyped(text);};$('display-mode').onclick=()=>{settings.display=settings.display==='auto'?'day':settings.display==='day'?'night':'auto';settings=saveTabletSettings(settings);syncSettingsToUI();};
+$('start').onclick=start;$('end').onclick=end;$('mobile-menu-button').onclick=() => setMobileMenu(!document.body.classList.contains('mobile-menu-open'));$('mobile-language-pill').onclick=()=>setMobileMenu(true);$('mobile-menu-backdrop').onclick=()=>setMobileMenu(false);$('message-form').onsubmit=e=>{e.preventDefault();const text=$('message').value.trim();$('message').value='';if(text)handleTyped(text);};$('display-mode').onclick=()=>{settings.display=settings.display==='auto'?'day':settings.display==='day'?'night':'auto';settings=saveTabletSettings(settings);syncSettingsToUI();};
+$('account').addEventListener('click',()=>setMobileMenu(false));
 document.addEventListener('pointerdown',unlockNotificationAudio,{passive:true});
 document.addEventListener('keydown',unlockNotificationAudio);
-document.querySelectorAll('#language-tabs button').forEach(button=>button.onclick=()=>{settings.language=button.dataset.language;settings=saveTabletSettings(settings);syncSettingsToUI();if(live)live.sendText(`Language setting changed to ${language()}. Continue using this setting.`);});
+document.querySelectorAll('#language-tabs button').forEach(button=>button.onclick=()=>{settings.language=button.dataset.language;settings=saveTabletSettings(settings);syncSettingsToUI();setMobileMenu(false);if(live)live.sendText(`Language setting changed to ${language()}. Continue using this setting.`);});
 $('night-start').innerHTML=hourOptions();$('night-end').innerHTML=hourOptions();
 function rowStatus(row){return row.status==='new'?'received':row.status==='in-progress'?'way':'done';}
 function statusLabel(row){return {received:'Received',way:'On the way',done:'Completed'}[rowStatus(row)]||'Received';}
@@ -70,7 +77,7 @@ function renderPatientRequests(){
 }
 function activeRoomRequests(){return store.items.filter(r=>r.room===store.profile?.room&&r.status==='in-progress');}
 function renderStaffRequests(){const rows=activeRoomRequests();if(!rows.some(r=>r.id===selectedCompletionId))selectedCompletionId=rows[0]?.id||null;$('staff-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-complete-id="${escapeHTML(r.id)}" class="${r.id===selectedCompletionId?'selected':''}"><strong>${escapeHTML(categoryLabel(r.category))}</strong><span>${escapeHTML(r.summary)} · ${new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}${r.acknowledgedByEmployeeId?' · ack '+escapeHTML(r.acknowledgedByEmployeeId):''}</span><em>${statuses[r.status]}</em></button>`).join(''):'<p>No acknowledged requests are waiting for bedside completion.</p>';$('staff-request-list').querySelectorAll('[data-complete-id]').forEach(button=>button.onclick=()=>{selectedCompletionId=button.dataset.completeId;renderStaffRequests();});$('staff-save').disabled=!selectedCompletionId;}
-$('staff').onclick=()=>{if(active)end();selectedCompletionId=null;$('staff-error').textContent='';$('staff-employee-id').value='';$('staff-dialog').showModal();renderStaffRequests();setTimeout(()=>$('staff-employee-id').focus(),50);};$('staff-close').onclick=()=>$('staff-dialog').close();
+$('staff').onclick=()=>{setMobileMenu(false);if(active)end();selectedCompletionId=null;$('staff-error').textContent='';$('staff-employee-id').value='';$('staff-dialog').showModal();renderStaffRequests();setTimeout(()=>$('staff-employee-id').focus(),50);};$('staff-close').onclick=()=>$('staff-dialog').close();
 $('staff-form').onsubmit=async e=>{e.preventDefault();$('staff-error').textContent='';try{if(!selectedCompletionId)throw Error('Select an acknowledged request first.');await store.completeAtRoom(selectedCompletionId,'Staff',$('staff-employee-id').value);toast('Request completed');$('staff-dialog').close();$('staff-employee-id').value='';}catch(error){$('staff-error').textContent=error.message;}};
 store.subscribe(items=>{for(const r of items.filter(r=>r.room===store.profile?.room)){const previous=requestState.get(r.id);if(requestLoaded&&previous==='new'&&r.status==='in-progress'){toast(acknowledgementMessage());speakAcknowledgement();}}requestState=new Map(items.map(r=>[r.id,r.status]));requestLoaded=true;renderPatientRequests();if($('staff-dialog').open)renderStaffRequests();});
 function fillSettings(){syncSettingsToUI();$('new-pin').value='';$('confirm-pin').value='';}
