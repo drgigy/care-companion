@@ -289,3 +289,10 @@ body[data-page=patient].conversation-active .talk-panel{padding-top:108px!import
 body[data-page=patient].conversation-active .talk-button{width:150px;height:150px}
 body[data-page=patient].conversation-active .stop-talk{bottom:28px;min-height:58px!important;padding:16px 32px!important;font-size:18px!important}
 }
+
+/* Startup feedback stays visible while the conversation controls are simplified. */
+body[data-page=patient] .voice-startup{flex:none;width:min(620px,100%);margin:32px auto 0;padding:0 12px;color:var(--patient-ink);font-size:20px;line-height:1.5;font-weight:600}
+body[data-voice-state=connecting] .talk-button::before{animation:startupSpin 1.2s linear infinite;opacity:1;border-color:transparent;border-top-color:var(--patient-ink)}
+body[data-voice-state=connecting] .talk-button::after{animation:none;opacity:0}
+@keyframes startupSpin{to{transform:rotate(360deg)}}
+@media(max-width:760px){body[data-page=patient] .voice-startup{font-size:17px;margin-top:26px}}

@@ -18,3 +18,78 @@ const event={toolCall:{functionCalls:[{id:'one',name:'request_care',args:{catego
 await live.handle({toolCall:{functionCalls:[{id:'invalid',name:'request_care',args:{category:'bad',summary:'Water'}}]}});assert.equal(calls,1);assert.ok(responses.at(-1).functionResponses[0].response.error);
 let stopped=0;live.sources.add({stop(){stopped++;}});await live.handle({serverContent:{interrupted:true}});assert.equal(stopped,1);assert.equal(live.sources.size,0,'Barge-in must stop queued playback');
 console.log('Passed: room assignment, request retry, role enforcement, forward status transitions, classification, escaping, Live tool deduplication and interruption cleanup.');
+
+
+// Exercise startup with controlled devices/network; no credentials or live service.
+const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
+const originalPrepare=LiveCompanion.prepareToken;
+let issued=0;
+LiveCompanion.prepareToken=async()=>({createdAt:Date.now(),result:{data:{}},serial:++issued});
+LiveCompanion.tokenStore=patient;LiveCompanion.tokenPromise=Promise.resolve({createdAt:Date.now()-51000});
+assert.equal((await LiveCompanion.takeWarmToken(patient)).serial,1,'Expired warm tokens must be replaced');
+LiveCompanion.tokenPromise=Promise.reject(Error('prefetch failed'));
+assert.equal((await LiveCompanion.takeWarmToken(patient)).serial,2,'Failed prefetch must retry at Start');
+await LiveCompanion.warm(patient);await LiveCompanion.takeWarmToken(patient);
+assert.equal(issued,3,'Fresh prefetch must be consumed once');
+await LiveCompanion.takeWarmToken(patient);assert.equal(issued,4,'One-use tokens must not be reused');
+
+const devices={};Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:devices}});
+let contexts=[];
+globalThis.AudioContext=class {
+  constructor(){this.sampleRate=24000;this.currentTime=0;this.destination={};this.closed=false;this.audioWorklet={addModule:async()=>{}};contexts.push(this);}
+  async resume(){} async close(){this.closed=true;}
+  createMediaStreamSource(){return {connect(){},disconnect(){}};}
+  createBuffer(channels,length){return {duration:length/24000,getChannelData:()=>new Float32Array(length)};}
+  createBufferSource(){return {connect(){},start(){},stop(){}};}
+};
+globalThis.AudioWorkletNode=class {constructor(){this.port={};}connect(){}disconnect(){}};
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
+function mockStream(){const track={stopped:false,stop(){this.stopped=true;}};return {track,getTracks:()=>[track],getAudioTracks:()=>[track]};}
+let connection,closedSessions=0,greetings=0,tokenStarted=false,stages=[],timings=[];
+class FakeAI {constructor(){this.live={connect:()=>connection.promise};}}
+function token(createdAt=Date.now()){return {GoogleGenAI:FakeAI,createdAt,result:{data:{token:'test-only',model:'unchanged',liveConfig:{}}}};}
+const fakeSession=()=>({close(){closedSessions++;},sendClientContent(){greetings++;}});
+LiveCompanion.tokenPromise=null;
+LiveCompanion.prepareToken=async()=>{tokenStarted=true;return token();};
+const callbacks={onStartup:stage=>stages.push(stage),onTiming:t=>timings.push(t),onState(){},onError:message=>{throw Error(message);}};
+let permission=deferred();devices.getUserMedia=()=>permission.promise;connection=deferred();
+let startup=new LiveCompanion(patient,callbacks);let pending=startup.start();
+assert.equal(tokenStarted,true,'Token fetch must start without waiting for microphone permission');
+startup.stop();const cancelledStream=mockStream();permission.resolve(cancelledStream);await pending;
+assert.equal(cancelledStream.track.stopped,true,'Stop during permission must release a late microphone');
+assert.ok(contexts.every(context=>context.closed),'Cancelled setup must close audio contexts');
+
+// A token that aged while permission was open must be refreshed before connect.
+let refreshed=0;LiveCompanion.tokenStore=patient;LiveCompanion.tokenPromise=Promise.resolve(token());
+permission=deferred();startup=new LiveCompanion(patient,callbacks);pending=startup.start();
+await flush(); // token consumed; permission still pending
+// Control the prepared token clock without a real 50 second wait.
+const realNow=Date.now;Date.now=()=>realNow()+60000;
+LiveCompanion.prepareToken=async()=>{refreshed++;return token();};
+const stream=mockStream();permission.resolve(stream);await flush();
+assert.equal(refreshed,1,'Permission delay must trigger token refresh before connecting');
+Date.now=realNow;
+startup.stop();connection.resolve(fakeSession());await pending;
+assert.equal(closedSessions,1,'Stop during connect must close a late session');
+assert.equal(greetings,0,'Cancelled sessions must never send a greeting');
+assert.equal(stream.track.stopped,true);
+
+// A successful setup waits for greeting audio before showing speaking/listening.
+stages=[];timings=[];connection=deferred();devices.getUserMedia=async()=>mockStream();
+const states=[];startup=new LiveCompanion(patient,{...callbacks,onState:state=>states.push(state)});
+pending=startup.start();await flush();connection.resolve(fakeSession());await pending;
+assert.deepEqual(stages,['preparing','connecting','greeting']);assert.equal(greetings,1);assert.deepEqual(states,[]);
+startup.play(btoa(String.fromCharCode(0,0)));
+assert.equal(states.at(-1),'Companion is speaking');
+assert.equal(timings.filter(t=>t.stage==='first_audio_scheduled').length,1);
+startup.play(btoa(String.fromCharCode(0,0)));
+assert.equal(timings.filter(t=>t.stage==='first_audio_scheduled').length,1,'Measure first audio only once');
+startup.stop();
+
+// Failure in a parallel startup branch also stops late-arriving microphone tracks.
+permission=deferred();devices.getUserMedia=()=>permission.promise;
+LiveCompanion.prepareToken=async()=>{throw Error('token unavailable');};
+startup=new LiveCompanion(patient,callbacks);await assert.rejects(startup.start(),/token unavailable/);
+const lateStream=mockStream();permission.resolve(lateStream);await flush();assert.equal(lateStream.track.stopped,true);
+LiveCompanion.prepareToken=originalPrepare;LiveCompanion.tokenPromise=null;LiveCompanion.tokenStore=null;
+console.log('Passed: concurrent startup, stale/failed/one-use tokens, permission-delay refresh, cancellation, failure cleanup and first-audio timing.');

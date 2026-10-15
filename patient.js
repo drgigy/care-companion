@@ -1,6 +1,6 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js';
 import {LiveCompanion} from './voice.js';
-const store=new CareStore('patient');let active=false,live=null,starting=false,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
+const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
 const langText={
   auto:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
   english:{tap:'Tap here to speak',sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the Nurse Call button.',requests:'Your requests'},
@@ -15,8 +15,22 @@ function displayLanguage(){return language()==='auto'?'auto':language();}
 function detectLanguage(text){if(/[\u0600-\u06FF]/.test(text))return 'arabic';if(/[\u0D00-\u0D7F]/.test(text))return 'malayalam';return 'english';}
 function requestLanguage(text){return language()==='auto'?detectLanguage(text):language();}
 function bubble(text,user=false){const div=document.createElement('div');div.className='bubble'+(user?' user':'');div.textContent=text;$('chat').append(div);$('chat').scrollTop=$('chat').scrollHeight;}
+const startupCopy={
+  english:{preparing:'Getting ready… Please allow microphone access if asked.',connecting:'Connecting to your companion…',greeting:'Your companion will greet you shortly…'},
+  malayalam:{preparing:'തയ്യാറാകുന്നു… മൈക്രോഫോൺ അനുമതി ചോദിച്ചാൽ അനുവദിക്കുക.',connecting:'സഹായിയുമായി ബന്ധിപ്പിക്കുന്നു…',greeting:'സഹായി ഉടൻ സംസാരിക്കും…'},
+  arabic:{preparing:'جارٍ الاستعداد… يرجى السماح باستخدام الميكروفون إذا طُلب ذلك.',connecting:'جارٍ الاتصال بمساعدك…',greeting:'سيتحدث مساعدك إليك بعد قليل…'}
+};
+function setStartupState(stage){
+  document.body.dataset.voiceState='connecting';
+  const status=$('voice-startup');status.hidden=false;
+  status.lang={english:'en',malayalam:'ml',arabic:'ar'}[language()]||'ml';
+  status.textContent=(startupCopy[language()]||startupCopy.malayalam)[stage];
+}
 function setVoiceState(label=''){
   const normalized=String(label).toLowerCase();
+  // Startup feedback remains until actual audio or a ready listening event.
+  if(active&&document.body.dataset.voiceState==='connecting'&&!/speak|listen/.test(normalized))return;
+  $('voice-startup').hidden=true;
   document.body.dataset.voiceState=normalized.includes('speak')?'speaking':normalized.includes('listen')?'listening':active?'listening':'idle';
 }
 function normalizeSpeechLanguage(lang){lang=String(lang||'english').toLowerCase();if(lang==='ml'||lang==='malayalam')return 'malayalam';if(lang==='ar'||lang==='arabic')return 'arabic';return 'english';}
@@ -43,23 +57,23 @@ function setMobileMenu(open){
   $('mobile-menu-button').setAttribute('aria-expanded',String(open));
   $('mobile-menu-backdrop').hidden=!open;
 }
-function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
+function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;if(value&&!store.demo)setStartupState('preparing');else setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
 function warmVoice(){if(store.profile&&!store.demo)LiveCompanion.warm(store).catch(()=>{});}
-function end(){starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;warmVoice();}
+function end(){++startAttempt;starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;warmVoice();}
 function scheduleAutoEnd(delay=3500){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}
 async function start(){
   if(active||starting)return;if(!store.profile){$('login-dialog').showModal();return;}
-  starting=true;$('start').disabled=true;
+  const attempt=++startAttempt;starting=true;$('start').disabled=true;
   try{
     setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ താങ്കളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
-      live=new LiveCompanion(store,{languageMode:language(),onText:text=>bubble(text),onState:setVoiceState,onError:message=>{toast(message);end();},onEnd:()=>scheduleAutoEnd(),onRequest:async args=>{
+      live=new LiveCompanion(store,{languageMode:language(),onText:text=>{if(attempt===startAttempt)bubble(text);},onState:state=>{if(attempt===startAttempt)setVoiceState(state);},onStartup:stage=>{if(attempt===startAttempt)setStartupState(stage);},onTiming:timing=>console.debug('[Voice startup]',timing.stage,timing.elapsedMs+'ms'),onError:message=>{if(attempt===startAttempt){toast(message);end();}},onEnd:()=>{if(attempt===startAttempt)scheduleAutoEnd();},onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);
         try{const id=await store.create(args.category,args.summary,crypto.randomUUID(),lang);toast(`Request sent · ${categoryLabel(args.category)}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved.'};}
       }});
-      await live.start();if(!live||live.stopped)throw Error('The voice session closed before it was ready. Please start again.');
+      await live.start();if(attempt!==startAttempt)return;if(!live||live.stopped)throw Error('The voice session closed before it was ready. Please start again.');
     }
-  }catch(error){end();toast('Could not start: '+error.message);}finally{starting=false;$('start').disabled=active||!store.profile;}
+  }catch(error){if(attempt===startAttempt){end();toast('Could not start: '+error.message);}}finally{if(attempt===startAttempt){starting=false;$('start').disabled=active||!store.profile;}}
 }
 function showConfirmation(category,summary,id,patientLanguage){$('pending').hidden=false;$('pending').innerHTML=`<p>${escapeHTML(summary)}</p><button class="primary" id="confirm-request">Send request</button> <button class="text-button" id="cancel-request">Cancel</button>`;$('confirm-request').onclick=async()=>{try{await store.create(category,summary,id||crypto.randomUUID(),patientLanguage);$('pending').hidden=true;toast('Request sent');}catch(error){toast(error.message);}};$('cancel-request').onclick=()=>$('pending').hidden=true;}
 function handleTyped(text){bubble(text,true);const lang=requestLanguage(text),category=guessCategory(text)||'guestRelations';showConfirmation(category,text,null,lang);}

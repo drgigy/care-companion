@@ -7,15 +7,21 @@ function loadGenAI(){
 }
 export class LiveCompanion {
   static preload(){loadGenAI().catch(()=>{});}
+  static async prepareToken(store){
+    // Count validity from request start, not from a possibly slow SDK download.
+    const createdAt=Date.now();
+    const [module,result]=await Promise.all([loadGenAI(),store.call('liveToken',{})]);
+    return {GoogleGenAI:module.GoogleGenAI,result,createdAt};
+  }
   static warm(store){
-    if(this.tokenPromise)return this.tokenPromise;
-    this.tokenPromise=Promise.all([loadGenAI(),store.call('liveToken',{})])
-      .then(([module,result])=>({GoogleGenAI:module.GoogleGenAI,result,createdAt:Date.now()}))
-      .catch(error=>{this.tokenPromise=null;throw error;});
-    return this.tokenPromise;
+    if(this.tokenPromise&&this.tokenStore===store)return this.tokenPromise;
+    this.tokenStore=store;
+    const promise=this.prepareToken(store).catch(error=>{if(this.tokenPromise===promise)this.tokenPromise=null;throw error;});
+    this.tokenPromise=promise;
+    return promise;
   }
   static async takeWarmToken(store){
-    const warm=this.tokenPromise;
+    const warm=this.tokenStore===store?this.tokenPromise:null;
     if(warm){
       this.tokenPromise=null;
       try{
@@ -23,8 +29,12 @@ export class LiveCompanion {
         if(Date.now()-prepared.createdAt<50000)return prepared;
       }catch{}
     }
-    const [module,result]=await Promise.all([loadGenAI(),store.call('liveToken',{})]);
-    return {GoogleGenAI:module.GoogleGenAI,result,createdAt:Date.now()};
+    return this.prepareToken(store);
+  }
+  markStartup(stage){
+    if(this.stopped||this.startedAt===undefined)return;
+    this.startupTimings[stage]=Math.round(performance.now()-this.startedAt);
+    this.callbacks.onTiming?.({stage,elapsedMs:this.startupTimings[stage]});
   }
   constructor(store,callbacks){this.store=store;this.callbacks=callbacks;this.session=null;this.stream=null;this.inputContext=null;this.outputContext=null;this.sources=new Set();this.nextPlay=0;this.muted=false;this.stopped=false;this.processed=new Map();this.generation=0;this.lastPatientText='';this.endConfirmationAsked=false;this.closingStarted=false;this.closeTimer=null;}
   languageInstruction(languageMode){
@@ -38,37 +48,58 @@ export class LiveCompanion {
     return `The patient pressed Start. The tablet language is ${languageMode}. Start with exactly this ${languageMode} greeting and do not translate or replace it: "${greetings[languageMode]||greetings.malayalam}" Every spoken reply must be only ${languageMode}. Do not say any English words or English sentences when ${languageMode} is selected, except the English request_care summary that staff will read. In Malayalam mode, never say English fragments such as "Your request", "request sent", "food delivery", or "department"; use Malayalam equivalents. Keep the Aster Medicity welcome, department confirmation, anything-else question, and final thank-you/get-well-soon message in ${languageMode} only, even if the patient uses words from another language. Use the configured female voice and keep the tone consistently calm, empathetic, and hospital-appropriate. Follow the scripted flow exactly: listen, clarify only if needed, ask whether to inform the correct department, wait for confirmation, send the request, ask if anything else is needed, and end only after the patient says no. ${guestRelations} Direct food requests like "എനിക്ക് ചിക്കൻ ബിരിയാണി വേണം" are clear food requests; ask whether to inform the food department, then send category "food" after confirmation. Say the final thank-you/get-well-soon closing only once, immediately before ending. The request_care summary must stay in English.`;
   }
   async start(){
+    if(this.stopped)return;
     const generation=++this.generation;
+    const cancelled=()=>this.stopped||generation!==this.generation;
+    this.startedAt=performance.now();this.startupTimings={};
+    this.callbacks.onStartup?.('preparing');
     try{
       if(!navigator.mediaDevices?.getUserMedia)throw Error('Microphone access requires HTTPS or localhost.');
-      // Create/resume playback from the Start button gesture before asynchronous setup.
-      this.outputContext=new AudioContext({sampleRate:24000});await this.outputContext.resume();
-      this.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-      if(this.stopped||generation!==this.generation){this.stream.getTracks().forEach(t=>t.stop());return;}
-      const {GoogleGenAI,result}=await LiveCompanion.takeWarmToken(this.store);
-      if(this.stopped)return;
+      // Resume playback within the gesture; prepare token and microphone concurrently.
+      this.outputContext=new AudioContext({sampleRate:24000});
+      const playbackReady=this.outputContext.resume().then(()=>this.markStartup('playback_ready'));
+      const microphoneReady=(async()=>{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+        if(cancelled()){stream.getTracks().forEach(t=>t.stop());return;}
+        this.stream=stream;this.markStartup('microphone_permission_ready');
+        this.inputContext=new AudioContext();
+        await this.inputContext.audioWorklet.addModule('mic-worklet.js');
+        if(cancelled())return;
+        await this.inputContext.resume();
+        if(cancelled())return;
+        this.microphone=this.inputContext.createMediaStreamSource(stream);
+        this.processor=new AudioWorkletNode(this.inputContext,'pcm-capture');
+        this.processor.port.onmessage=event=>{
+          if(this.stopped||this.muted||!this.session)return;
+          const pcm=new Int16Array(event.data.length);for(let i=0;i<pcm.length;i++)pcm[i]=Math.round(Math.max(-1,Math.min(1,event.data[i]))*32767);
+          const bytes=new Uint8Array(pcm.buffer);let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
+          this.session.sendRealtimeInput({audio:{data:btoa(binary),mimeType:`audio/pcm;rate=${this.inputContext.sampleRate}`}});
+        };
+        this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
+        this.markStartup('microphone_ready');
+      })();
+      const tokenReady=LiveCompanion.takeWarmToken(this.store).then(prepared=>{this.markStartup('token_ready');return prepared;});
+      let [prepared]=await Promise.all([tokenReady,playbackReady,microphoneReady]);
+      if(cancelled())return;
+      this.callbacks.onStartup?.('connecting');
+      // A long microphone permission prompt may outlast a one-use token.
+      if(Date.now()-prepared.createdAt>=50000){prepared=await LiveCompanion.prepareToken(this.store);this.markStartup('token_ready');}
+      if(cancelled())return;
+      const {GoogleGenAI,result}=prepared;
       const {token,model,liveConfig}=result.data;const ai=new GoogleGenAI({apiKey:token,httpOptions:{apiVersion:'v1beta'}});
-      this.session=await ai.live.connect({model,config:liveConfig,callbacks:{
-        onmessage:message=>{this.handle(message).catch(error=>this.callbacks.onError('Conversation error: '+error.message));},
+      const session=await ai.live.connect({model,config:liveConfig,callbacks:{
+        onmessage:message=>{this.handle(message).catch(error=>{if(!this.stopped)this.callbacks.onError('Conversation error: '+error.message);});},
         onerror:()=>{if(!this.stopped)this.callbacks.onError('The voice connection failed. Please start again.');},
         onclose:()=>{if(!this.stopped)this.callbacks.onError('The voice session ended. Start a new conversation to reconnect.');}
       }});
-      if(this.stopped){this.session.close();return;}
-      this.inputContext=new AudioContext();await this.inputContext.audioWorklet.addModule('mic-worklet.js');await this.inputContext.resume();
-      this.microphone=this.inputContext.createMediaStreamSource(this.stream);this.processor=new AudioWorkletNode(this.inputContext,'pcm-capture');
-      this.processor.port.onmessage=event=>{
-        if(this.stopped||this.muted||!this.session)return;
-        const pcm=new Int16Array(event.data.length);for(let i=0;i<pcm.length;i++)pcm[i]=Math.round(Math.max(-1,Math.min(1,event.data[i]))*32767);
-        const bytes=new Uint8Array(pcm.buffer);let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
-        this.session.sendRealtimeInput({audio:{data:btoa(binary),mimeType:`audio/pcm;rate=${this.inputContext.sampleRate}`}});
-      };
-      this.microphone.connect(this.processor);this.processor.connect(this.inputContext.destination);
-      const languageMode=this.callbacks.languageMode||'auto';
-      const instruction=this.languageInstruction(languageMode);
+      if(cancelled()){session.close();return;}
+      this.session=session;this.markStartup('connection_ready');
+      this.callbacks.onStartup?.('greeting');
+      const instruction=this.languageInstruction(this.callbacks.languageMode||'auto');
       this.session.sendClientContent({turns:[{role:'user',parts:[{text:instruction}]}],turnComplete:true});
+      this.markStartup('greeting_requested');
       this.timeout=setTimeout(()=>{if(!this.stopped)this.callbacks.onError('This conversation has reached its session limit. Please start again.');},9*60*1000);
-      this.callbacks.onState('Listening to you');
-    }catch(error){this.stop();throw error;}
+    }catch(error){if(cancelled())return;this.stop();throw error;}
   }
   async handle(message){
     if(this.stopped)return;
@@ -135,7 +166,7 @@ export class LiveCompanion {
   play(base64){
     if(this.stopped)return;const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));const view=new DataView(bytes.buffer),buffer=this.outputContext.createBuffer(1,bytes.length/2,24000),channel=buffer.getChannelData(0);
     for(let i=0;i<channel.length;i++)channel[i]=view.getInt16(i*2,true)/32768;
-    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>this.sources.delete(source);source.start(time);if(this.closingStarted)this.scheduleCloseAfterAudio();else this.callbacks.onState('Companion is speaking');
+    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>this.sources.delete(source);source.start(time);if(this.startupTimings&&!('first_audio_scheduled'in this.startupTimings))this.markStartup('first_audio_scheduled');if(this.closingStarted)this.scheduleCloseAfterAudio();else this.callbacks.onState('Companion is speaking');
   }
   clearAudio(){this.sources.forEach(source=>{try{source.stop();}catch{}});this.sources.clear();this.nextPlay=0;}
   sendText(text){this.session?.sendClientContent({turns:[{role:'user',parts:[{text}]}],turnComplete:true});}
