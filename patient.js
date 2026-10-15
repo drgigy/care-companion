@@ -50,14 +50,14 @@ function syncSettingsToUI(){
   document.querySelectorAll('#language-tabs button').forEach(button=>button.classList.toggle('selected',button.dataset.language===language()));
   $('mobile-language-label').textContent=languageName[language()]||'Auto';
   $('setting-language').value=language();$('setting-display').value=settings.display;$('ward-unit').value=settings.ward;$('patient-name').value=settings.patientName;$('patient-uhid').value=settings.uhid;$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;if(store.profile)$('demo-room').value=store.profile.room;
-  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('requests-title').textContent=copy.requests;updateTheme();
+  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);updateTheme();
 }
 function setMobileMenu(open){
   document.body.classList.toggle('mobile-menu-open',open);
   $('mobile-menu-button').setAttribute('aria-expanded',String(open));
   $('mobile-menu-backdrop').hidden=!open;
 }
-function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('chat').hidden=true;if(value&&!store.demo)setStartupState('preparing');else setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
+function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('tap-title').setAttribute('aria-hidden',String(value));$('chat').hidden=true;if(value&&!store.demo)setStartupState('preparing');else setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
 function warmVoice(){if(store.profile&&!store.demo)LiveCompanion.warm(store).catch(()=>{});}
 function end(){++startAttempt;starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;warmVoice();}
 function scheduleAutoEnd(delay=3500){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}

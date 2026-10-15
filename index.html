@@ -36,14 +36,17 @@
     <button class="talk-button" id="start" aria-label="Start conversation">
       <span class="mic-icon" aria-hidden="true"><i></i></span>
     </button>
-    <button class="secondary stop-talk" id="end" hidden>Stop conversation</button>
-    <p id="voice-startup" class="voice-startup" role="status" aria-live="polite" hidden></p>
-    <h1 id="tap-title">Tap to talk</h1>
-    <p class="tap-subtitle" id="tap-subtitle">സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث</p>
+    <div class="talk-action">
+      <h1 id="tap-title">Tap to talk</h1>
+      <button class="secondary stop-talk" id="end" hidden>Stop conversation</button>
+    </div>
+    <div class="talk-copy">
+      <p class="tap-subtitle" id="tap-subtitle">സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث</p>
+      <p id="voice-startup" class="voice-startup" role="status" aria-live="polite" hidden></p>
+    </div>
     <div class="helper-card" id="helper-card"></div>
     <p class="emergency-note" id="emergency-note">For emergencies, press the nurse call button on your bed.</p>
-    <h2 class="requests-title" id="requests-title">Your requests</h2>
-    <div class="patient-requests" id="patient-requests" aria-live="polite"></div>
+    <div class="patient-requests" id="patient-requests" aria-label="Requests" aria-live="polite"></div>
     <div class="chat" id="chat" aria-live="polite" hidden></div>
     <div class="pending" id="pending" hidden></div>
   </section>
