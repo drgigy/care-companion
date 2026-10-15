@@ -303,3 +303,26 @@ body[data-voice-state=connecting] .talk-button::before{animation:startupSpin 1.2
 body[data-voice-state=connecting] .talk-button::after{animation:none;opacity:0}
 @keyframes startupSpin{to{transform:rotate(360deg)}}
 @media(max-width:760px){body[data-page=patient] .talk-action{min-height:70px;margin:14px 0 7px}body[data-page=patient] .talk-copy{margin-bottom:14px}body[data-page=patient] .voice-startup{font-size:16px;line-height:1.45}body[data-page=patient] .patient-requests{margin-top:0}}
+
+/* Three-step request tracker: received, staff on the way, bedside completion. */
+body[data-page=patient] .patient-request-card{grid-template-columns:46px minmax(0,1fr) 330px;padding:10px 14px}
+.request-progress{--progress-green:#11765f;--progress-gray:#d0d4d2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));list-style:none;margin:0;padding:0;min-width:0;text-align:center;align-self:center}
+.progress-step{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;color:var(--patient-muted)}
+.progress-step:not(:last-child)::after{content:"";position:absolute;left:calc(50% + 23px);top:15px;width:calc(100% - 46px);height:3px;background:var(--progress-gray)}
+.progress-step.passed::after{background:var(--progress-green)}
+.progress-circle{display:grid;place-items:center;box-sizing:border-box;width:32px;height:32px;border:2px solid var(--progress-gray);border-radius:50%;color:white;background:var(--patient-panel)}
+.progress-circle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.progress-step.reached .progress-circle{border-color:var(--progress-green);background:var(--progress-green)}
+.progress-step.walking .progress-circle{border:3px solid var(--progress-green);background:var(--patient-panel);color:var(--progress-green)}
+.progress-step.walking circle{fill:currentColor;stroke:none}
+.progress-label{font-size:14px;line-height:1.2;white-space:nowrap}
+.progress-step.current .progress-label{color:var(--progress-green);font-weight:800}
+body[data-theme=night] .request-progress{--progress-green:#62c6a8;--progress-gray:#53645d}
+body[data-theme=night] .progress-step.reached:not(.walking) .progress-circle{color:#0d1c17}
+@media(max-width:900px) and (min-width:761px){body[data-page=patient] .patient-request-card{grid-template-columns:40px minmax(0,1fr) 285px}}
+@media(max-width:760px){
+body[data-page=patient] .patient-request-card{grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto auto;padding:12px;gap:12px 10px}
+body[data-page=patient] .patient-request-card .request-icon{grid-row:1}
+body[data-page=patient] .request-progress{grid-column:1/-1;grid-row:2;width:100%}
+.progress-circle{width:32px;height:32px}.progress-label{font-size:13px}
+}

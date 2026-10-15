@@ -84,10 +84,20 @@ document.addEventListener('keydown',unlockNotificationAudio);
 document.querySelectorAll('#language-tabs button').forEach(button=>button.onclick=()=>{settings.language=button.dataset.language;settings=saveTabletSettings(settings);syncSettingsToUI();setMobileMenu(false);if(live)live.sendText(`Language setting changed to ${language()}. Continue using this setting.`);});
 $('night-start').innerHTML=hourOptions();$('night-end').innerHTML=hourOptions();
 function rowStatus(row){return row.status==='new'?'received':row.status==='in-progress'?'way':'done';}
-function statusLabel(row){return {received:'Received',way:'On the way',done:'Completed'}[rowStatus(row)]||'Received';}
+function requestProgress(row){
+  const current={received:0,way:1,done:2}[rowStatus(row)];
+  const labels=['Received','On the way','Done'];
+  const check='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
+  const walking='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="14" cy="4" r="1.5"/><path d="m12 8 3 3 4 1M8 11l4-3-1 6 4 3 1 4M11 14l-5 7"/></svg>';
+  return `<ol class="request-progress" aria-label="Request progress: ${labels[current]}">${labels.map((label,index)=>{
+    const reached=index<=current;
+    const icon=index===1&&current===1?walking:reached?check:'';
+    return `<li class="progress-step${reached?' reached':''}${index<current?' passed':''}${index===current?' current':''}${index===1&&current===1?' walking':''}"${index===current?' aria-current="step"':''}><span class="progress-circle" aria-hidden="true">${icon}</span><span class="progress-label">${label}</span></li>`;
+  }).join('')}</ol>`;
+}
 function renderPatientRequests(){
   const today=new Date();today.setHours(0,0,0,0);const rows=store.items.filter(r=>r.room===store.profile?.room&&r.createdAt>=today.getTime()).sort((a,b)=>b.createdAt-a.createdAt);
-  $('patient-requests').innerHTML=rows.map(r=>`<article class="patient-request-card ${rowStatus(r)}"><b class="request-icon">${escapeHTML(categories[r.category]?.icon||'!')}</b><div><strong>${escapeHTML(r.summary)}</strong><small>${escapeHTML(categoryLabel(r.category))} · ${new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small></div><div class="progress-bars"><i></i><i></i><i></i></div><span>${escapeHTML(statusLabel(r))}</span></article>`).join('');
+  $('patient-requests').innerHTML=rows.map(r=>`<article class="patient-request-card ${rowStatus(r)}"><b class="request-icon">${escapeHTML(categories[r.category]?.icon||'!')}</b><div><strong>${escapeHTML(r.summary)}</strong><small>${escapeHTML(categoryLabel(r.category))} · ${new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small></div>${requestProgress(r)}</article>`).join('');
 }
 function activeRoomRequests(){return store.items.filter(r=>r.room===store.profile?.room&&r.status==='in-progress');}
 function renderStaffRequests(){const rows=activeRoomRequests();if(!rows.some(r=>r.id===selectedCompletionId))selectedCompletionId=rows[0]?.id||null;$('staff-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-complete-id="${escapeHTML(r.id)}" class="${r.id===selectedCompletionId?'selected':''}"><strong>${escapeHTML(categoryLabel(r.category))}</strong><span>${escapeHTML(r.summary)} · ${new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}${r.acknowledgedByEmployeeId?' · ack '+escapeHTML(r.acknowledgedByEmployeeId):''}</span><em>${statuses[r.status]}</em></button>`).join(''):'<p>No acknowledged requests are waiting for bedside completion.</p>';$('staff-request-list').querySelectorAll('[data-complete-id]').forEach(button=>button.onclick=()=>{selectedCompletionId=button.dataset.completeId;renderStaffRequests();});$('staff-save').disabled=!selectedCompletionId;}
