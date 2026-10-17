@@ -1,5 +1,5 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js';
-import {LiveCompanion} from './voice.js';
+import {LiveCompanion} from './voice.js?v=avatar-20261017';
 const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
 const langText={
   auto:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
@@ -26,12 +26,13 @@ function setStartupState(stage){
   status.lang={english:'en',malayalam:'ml',arabic:'ar'}[language()]||'ml';
   status.textContent=(startupCopy[language()]||startupCopy.malayalam)[stage];
 }
+function setAvatarAudio(level=0){$('start').style.setProperty('--mouth-open',String(Math.max(.02,Math.min(1,level))));}
 function setVoiceState(label=''){
-  const normalized=String(label).toLowerCase();
+  const normalized=String(label).toLowerCase();if(!normalized.includes('speak'))setAvatarAudio(0);
   // Startup feedback remains until actual audio or a ready listening event.
   if(active&&document.body.dataset.voiceState==='connecting'&&!/speak|listen/.test(normalized))return;
   $('voice-startup').hidden=true;
-  document.body.dataset.voiceState=normalized.includes('speak')?'speaking':normalized.includes('listen')?'listening':active?'listening':'idle';
+  document.body.dataset.voiceState=normalized.includes('speak')?'speaking':normalized.includes('listen')?'listening':normalized.includes('ending')?'ending':active?'listening':'idle';
 }
 function normalizeSpeechLanguage(lang){lang=String(lang||'english').toLowerCase();if(lang==='ml'||lang==='malayalam')return 'malayalam';if(lang==='ar'||lang==='arabic')return 'arabic';return 'english';}
 function unlockNotificationAudio(){try{notificationAudio ||= new AudioContext();notificationAudio.resume?.();}catch{} if('speechSynthesis'in window){speechSynthesis.getVoices();speechSynthesis.resume?.();}}
@@ -50,7 +51,7 @@ function syncSettingsToUI(){
   document.querySelectorAll('#language-tabs button').forEach(button=>button.classList.toggle('selected',button.dataset.language===language()));
   $('mobile-language-label').textContent=languageName[language()]||'Auto';
   $('setting-language').value=language();$('setting-display').value=settings.display;$('ward-unit').value=settings.ward;$('patient-name').value=settings.patientName;$('patient-uhid').value=settings.uhid;$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;if(store.profile)$('demo-room').value=store.profile.room;
-  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);updateTheme();
+  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);$('requests-dialog-title').textContent=copy.requests;const requestCopy={english:['Requests','No requests today.'],malayalam:['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'],arabic:['الطلبات','لا توجد طلبات اليوم.']}[language()]||['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'];$('requests-button-label').textContent=requestCopy[0];$('requests-empty').textContent=requestCopy[1];updateTheme();
 }
 function setMobileMenu(open){
   document.body.classList.toggle('mobile-menu-open',open);
@@ -67,7 +68,7 @@ async function start(){
   try{
     setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ താങ്കളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
-      live=new LiveCompanion(store,{languageMode:language(),onText:text=>{if(attempt===startAttempt)bubble(text);},onState:state=>{if(attempt===startAttempt)setVoiceState(state);},onStartup:stage=>{if(attempt===startAttempt)setStartupState(stage);},onTiming:timing=>console.debug('[Voice startup]',timing.stage,timing.elapsedMs+'ms'),onError:message=>{if(attempt===startAttempt){toast(message);end();}},onEnd:()=>{if(attempt===startAttempt)scheduleAutoEnd();},onRequest:async args=>{
+      live=new LiveCompanion(store,{languageMode:language(),onText:text=>{if(attempt===startAttempt)bubble(text);},onState:state=>{if(attempt===startAttempt)setVoiceState(state);},onStartup:stage=>{if(attempt===startAttempt)setStartupState(stage);},onAudioLevel:level=>{if(attempt===startAttempt)setAvatarAudio(level);},onTiming:timing=>console.debug('[Voice startup]',timing.stage,timing.elapsedMs+'ms'),onError:message=>{if(attempt===startAttempt){toast(message);end();}},onEnd:()=>{if(attempt===startAttempt)scheduleAutoEnd();},onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);
         try{const id=await store.create(args.category,args.summary,crypto.randomUUID(),lang);toast(`Request sent · ${categoryLabel(args.category)}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved.'};}
       }});
@@ -77,6 +78,7 @@ async function start(){
 }
 function showConfirmation(category,summary,id,patientLanguage){$('pending').hidden=false;$('pending').innerHTML=`<p>${escapeHTML(summary)}</p><button class="primary" id="confirm-request">Send request</button> <button class="text-button" id="cancel-request">Cancel</button>`;$('confirm-request').onclick=async()=>{try{await store.create(category,summary,id||crypto.randomUUID(),patientLanguage);$('pending').hidden=true;toast('Request sent');}catch(error){toast(error.message);}};$('cancel-request').onclick=()=>$('pending').hidden=true;}
 function handleTyped(text){bubble(text,true);const lang=requestLanguage(text),category=guessCategory(text)||'guestRelations';showConfirmation(category,text,null,lang);}
+$('requests-button').onclick=()=>{setMobileMenu(false);$('requests-dialog').showModal();};$('requests-close').onclick=()=>$('requests-dialog').close();
 $('start').onclick=start;$('end').onclick=end;$('mobile-menu-button').onclick=() => setMobileMenu(!document.body.classList.contains('mobile-menu-open'));$('mobile-language-pill').onclick=()=>setMobileMenu(true);$('mobile-menu-backdrop').onclick=()=>setMobileMenu(false);$('message-form').onsubmit=e=>{e.preventDefault();const text=$('message').value.trim();$('message').value='';if(text)handleTyped(text);};$('display-mode').onclick=()=>{settings.display=settings.display==='auto'?'day':settings.display==='day'?'night':'auto';settings=saveTabletSettings(settings);syncSettingsToUI();};
 $('account').addEventListener('click',()=>setMobileMenu(false));
 document.addEventListener('pointerdown',unlockNotificationAudio,{passive:true});
@@ -97,6 +99,7 @@ function requestProgress(row){
 }
 function renderPatientRequests(){
   const today=new Date();today.setHours(0,0,0,0);const rows=store.items.filter(r=>r.room===store.profile?.room&&r.createdAt>=today.getTime()).sort((a,b)=>b.createdAt-a.createdAt);
+  $('requests-empty').hidden=rows.length>0;$('requests-count').hidden=!rows.length;$('requests-count').textContent=String(rows.length);
   $('patient-requests').innerHTML=rows.map(r=>`<article class="patient-request-card ${rowStatus(r)}"><b class="request-icon">${escapeHTML(categories[r.category]?.icon||'!')}</b><div><strong>${escapeHTML(r.summary)}</strong><small>${escapeHTML(categoryLabel(r.category))} · ${new Date(r.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small></div>${requestProgress(r)}</article>`).join('');
 }
 function activeRoomRequests(){return store.items.filter(r=>r.room===store.profile?.room&&r.status==='in-progress');}

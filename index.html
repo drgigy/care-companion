@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Aster Care companion · Your room</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=avatar-20261017">
 </head>
 <body data-page="patient" data-theme="day">
 <header class="patient-topbar">
@@ -13,6 +13,8 @@
     <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
     <p id="patient-date">Monday 12 October</p>
   </div>
+  <div class="patient-header-controls">
+  <button class="requests-button" id="requests-button" type="button" aria-haspopup="dialog" aria-controls="requests-dialog"><span id="requests-button-label">Requests</span><span id="requests-count" class="requests-count" hidden></span></button>
   <button class="mobile-language-pill" id="mobile-language-pill" type="button" aria-label="Change language"><span aria-hidden="true">◎</span><strong id="mobile-language-label">Auto</strong></button>
   <button class="mobile-menu-button" id="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false">•••</button>
   <div class="patient-actions">
@@ -29,29 +31,69 @@
     <button class="text-button" id="staff">Staff</button>
     <button class="text-button" id="account">Settings</button>
   </div>
+  </div>
 </header>
 <button class="mobile-menu-backdrop" id="mobile-menu-backdrop" type="button" aria-label="Close menu" hidden></button>
 <main class="patient-main">
   <section class="talk-panel">
-    <button class="talk-button" id="start" aria-label="Start conversation">
-      <span class="mic-icon" aria-hidden="true"><i></i></span>
+    <button class="talk-button avatar-button" id="start" aria-label="Start conversation" aria-describedby="tap-subtitle">
+      <svg class="care-avatar" viewBox="0 0 360 400" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="avatar-halo" x2="0" y2="1"><stop stop-color="#e0f1e8"/><stop offset="1" stop-color="#f1f7f1"/></linearGradient>
+          <linearGradient id="avatar-kurta" x2="1" y2="1"><stop stop-color="#287e76"/><stop offset="1" stop-color="#145750"/></linearGradient>
+          <linearGradient id="avatar-skin" x2=".8" y2="1"><stop stop-color="#d99c75"/><stop offset="1" stop-color="#bc7d59"/></linearGradient>
+        </defs>
+        <circle class="avatar-halo" cx="180" cy="195" r="153" fill="url(#avatar-halo)"/>
+        <circle class="avatar-listening-ring" cx="180" cy="195" r="163" fill="none" stroke="#68aa93" stroke-width="2"/>
+        <g class="avatar-person">
+          <path d="M87 267C62 211 79 94 122 58c36-31 103-20 133 17 40 50 41 150 13 205Z" fill="#282522"/>
+          <path d="M43 386c4-76 34-115 105-125h64c71 10 101 49 105 125Z" fill="url(#avatar-kurta)"/>
+          <path d="M153 226v44c0 26 54 26 54 0v-44" fill="url(#avatar-skin)"/>
+          <path d="m139 266 41 38 41-38 16 10-39 52h-36l-39-52Z" fill="#114f48"/>
+          <path d="m180 304-17 82h34l-17-82" fill="#2f8a7d"/>
+          <path d="M226 267c8 36 28 87 55 119h-43c-29-38-41-72-46-90Z" fill="#a8d5c4"/>
+          <path d="M232 275c8 36 26 78 43 101" fill="none" stroke="#d7ece2" stroke-width="4"/>
+          <path d="M102 142c-19-13-21 29-7 42l12 4m151-46c19-13 21 29 7 42l-12 4" fill="#c88a64"/>
+          <g class="avatar-head">
+            <path d="M109 116c0-54 139-67 142 0l-3 65c-2 46-32 78-68 79-36-1-66-33-68-79Z" fill="url(#avatar-skin)"/>
+            <path d="M101 144c-13-53 13-94 61-96 63-16 108 28 96 96-21-24-24-51-28-66-39 35-91 16-129 66Z" fill="#302a27"/>
+            <path d="M116 106c27-35 70-21 107-41" fill="none" stroke="#504038" stroke-width="5" stroke-linecap="round"/>
+            <path d="M126 145q15-9 30-1m48 0q15-8 30 1" fill="none" stroke="#50382d" stroke-width="4" stroke-linecap="round"/>
+            <g class="avatar-eyes" fill="#352f2b">
+              <ellipse cx="142" cy="161" rx="9" ry="6"/><ellipse cx="218" cy="161" rx="9" ry="6"/>
+              <circle cx="145" cy="159" r="2" fill="#fff1de"/><circle cx="221" cy="159" r="2" fill="#fff1de"/>
+            </g>
+            <circle cx="180" cy="137" r="3" fill="#9c4140"/>
+            <path d="m180 169-5 21q5 4 11 0" fill="none" stroke="#ab6b4c" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="133" cy="190" rx="14" ry="7" fill="#db967b" opacity=".6"/><ellipse cx="227" cy="190" rx="14" ry="7" fill="#db967b" opacity=".6"/>
+            <path d="M161 210q19 15 38 0" fill="none" stroke="#914b46" stroke-width="4" stroke-linecap="round"/>
+            <g class="avatar-mouth-open"><ellipse cx="180" cy="214" rx="17" ry="11" fill="#703f39"/><path d="M166 208h28q-3 6-14 6t-14-6" fill="#fff1dd"/></g>
+            <g fill="#d8b668" stroke="#a88640" stroke-width="1.5"><circle cx="106" cy="193" r="5"/><circle cx="254" cy="193" r="5"/><path d="m103 198-3 10q6 5 12 0l-3-10m142 0-3 10q6 5 12 0l-3-10"/></g>
+          </g>
+          <path d="m92 326-5 60m181-60 5 60" stroke="#0e514b" stroke-width="3" opacity=".45"/>
+        </g>
+      </svg>
     </button>
     <div class="talk-action">
       <h1 id="tap-title">Tap to talk</h1>
       <button class="secondary stop-talk" id="end" hidden>Stop conversation</button>
     </div>
+    <p id="voice-startup" class="voice-startup" role="status" aria-live="polite" hidden></p>
     <div class="talk-copy">
       <p class="tap-subtitle" id="tap-subtitle">സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث</p>
-      <p id="voice-startup" class="voice-startup" role="status" aria-live="polite" hidden></p>
     </div>
     <div class="helper-card" id="helper-card"></div>
-    <p class="emergency-note" id="emergency-note">For emergencies, press the nurse call button on your bed.</p>
-    <div class="patient-requests" id="patient-requests" aria-label="Requests" aria-live="polite"></div>
+    <p class="emergency-note" id="emergency-note">For emergencies, press the Nurse Call button.</p>
     <div class="chat" id="chat" aria-live="polite" hidden></div>
     <div class="pending" id="pending" hidden></div>
   </section>
 </main>
 <footer><span>Aster Care Companion<br><small>Powered by WOYZ</small></span></footer>
+<dialog id="requests-dialog" class="requests-dialog" aria-labelledby="requests-dialog-title">
+  <div class="requests-dialog-header"><h2 id="requests-dialog-title">Your requests</h2><button id="requests-close" class="requests-close" type="button" aria-label="Close requests">×</button></div>
+  <div class="patient-requests" id="patient-requests" aria-label="Requests" aria-live="polite"></div>
+  <p id="requests-empty" class="requests-empty" hidden>No requests today.</p>
+</dialog>
 <dialog id="login-dialog">
   <form id="login-form">
     <div class="eyebrow" id="settings-eyebrow">ROOM SETTINGS</div>
@@ -94,6 +136,6 @@
 <form id="message-form" hidden><input id="message"><button>Send</button></form>
 <button id="mic" hidden></button>
 <div id="session-controls" hidden></div>
-<script type="module" src="patient.js?v=major-redesign"></script>
+<script type="module" src="patient.js?v=avatar-20261017"></script>
 </body>
 </html>

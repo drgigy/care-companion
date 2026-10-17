@@ -93,3 +93,26 @@ startup=new LiveCompanion(patient,callbacks);await assert.rejects(startup.start(
 const lateStream=mockStream();permission.resolve(lateStream);await flush();assert.equal(lateStream.track.stopped,true);
 LiveCompanion.prepareToken=originalPrepare;LiveCompanion.tokenPromise=null;LiveCompanion.tokenStore=null;
 console.log('Passed: concurrent startup, stale/failed/one-use tokens, permission-delay refresh, cancellation, failure cleanup and first-audio timing.');
+
+// Avatar motion follows playback time and stops immediately on interruption.
+let frameId=0;const frames=new Map(),audioLevels=[];
+globalThis.requestAnimationFrame=callback=>{frames.set(++frameId,callback);return frameId;};
+globalThis.cancelAnimationFrame=id=>frames.delete(id);
+const audioAvatar=new LiveCompanion(patient,{onAudioLevel:level=>audioLevels.push(level),onState(){}});
+audioAvatar.outputContext={currentTime:0};
+const runFrame=()=>{const [id,callback]=frames.entries().next().value;frames.delete(id);callback();};
+audioAvatar.queueAvatarAudio(new Float32Array(960).fill(.1),1);
+runFrame();assert.equal(audioLevels.at(-1),0,'Queued future speech must not animate the mouth yet');
+audioAvatar.outputContext.currentTime=1.005;runFrame();assert.ok(audioLevels.at(-1)>.6,'Playing speech must drive mouth movement');
+audioAvatar.clearAudio();assert.equal(audioLevels.at(-1),0);assert.equal(frames.size,0,'Interruption cancels avatar frames');
+audioAvatar.queueAvatarAudio(new Float32Array(480),2);audioAvatar.outputContext.currentTime=3;runFrame();
+assert.equal(audioLevels.at(-1),0);assert.equal(frames.size,0,'Finished audio must leave no animation loop running');
+console.log('Passed: avatar playback alignment, interruption reset and animation cleanup.');
+const playbackStates=[];
+const playbackAvatar=new LiveCompanion(patient,{onState:state=>playbackStates.push(state),onText(){}});
+playbackAvatar.outputContext=new AudioContext();playbackAvatar.play(btoa(String.fromCharCode(0,0)));
+await playbackAvatar.handle({serverContent:{turnComplete:true}});
+assert.equal(playbackStates.at(-1),'Companion is speaking','Turn completion must not show listening while audio remains queued');
+[...playbackAvatar.sources][0].onended();assert.equal(playbackStates.at(-1),'Listening to you','Listening resumes after playback drains');
+playbackAvatar.stop();
+console.log('Passed: speaking state persists until queued playback ends.');

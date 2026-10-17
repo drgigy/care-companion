@@ -112,7 +112,7 @@ export class LiveCompanion {
     }
     if(content?.inputTranscription?.text&&!this.closingStarted)this.lastPatientText=((this.lastPatientText||'')+' '+content.inputTranscription.text).slice(-320);
     for(const part of content?.modelTurn?.parts||[])if(part.inlineData?.data&&part.inlineData.mimeType?.startsWith('audio/pcm'))this.play(part.inlineData.data);
-    if(content?.turnComplete){if(this.transcript){this.noteAssistantTurn(this.transcript);this.callbacks.onText(this.transcript);this.transcript='';}if(!this.closingStarted)this.callbacks.onState('Listening to you');}
+    if(content?.turnComplete){if(this.transcript){this.noteAssistantTurn(this.transcript);this.callbacks.onText(this.transcript);this.transcript='';}if(!this.closingStarted&&!this.sources.size)this.callbacks.onState('Listening to you');}
     const calls=message.toolCall?.functionCalls||[];
     for(const call of calls){
       if(this.stopped)return;let response;
@@ -166,9 +166,31 @@ export class LiveCompanion {
   play(base64){
     if(this.stopped)return;const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));const view=new DataView(bytes.buffer),buffer=this.outputContext.createBuffer(1,bytes.length/2,24000),channel=buffer.getChannelData(0);
     for(let i=0;i<channel.length;i++)channel[i]=view.getInt16(i*2,true)/32768;
-    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>this.sources.delete(source);source.start(time);if(this.startupTimings&&!('first_audio_scheduled'in this.startupTimings))this.markStartup('first_audio_scheduled');if(this.closingStarted)this.scheduleCloseAfterAudio();else this.callbacks.onState('Companion is speaking');
+    const source=this.outputContext.createBufferSource();source.buffer=buffer;source.connect(this.outputContext.destination);const time=Math.max(this.outputContext.currentTime,this.nextPlay);this.nextPlay=time+buffer.duration;this.sources.add(source);source.onended=()=>{this.sources.delete(source);if(!this.sources.size&&!this.stopped&&!this.closingStarted)this.callbacks.onState('Listening to you');};source.start(time);this.queueAvatarAudio(channel,time);if(this.startupTimings&&!('first_audio_scheduled'in this.startupTimings))this.markStartup('first_audio_scheduled');if(this.closingStarted)this.scheduleCloseAfterAudio();else this.callbacks.onState('Companion is speaking');
   }
-  clearAudio(){this.sources.forEach(source=>{try{source.stop();}catch{}});this.sources.clear();this.nextPlay=0;}
+  queueAvatarAudio(channel,start){
+    if(!this.callbacks.onAudioLevel)return;
+    this.audioEnvelope ||= [];
+    // Match the mouth to scheduled playback, rather than to arriving network chunks.
+    const step=480;
+    for(let offset=0;offset<channel.length;offset+=step){
+      const end=Math.min(channel.length,offset+step);let sum=0;
+      for(let i=offset;i<end;i++)sum+=channel[i]*channel[i];
+      this.audioEnvelope.push({start:start+offset/24000,end:start+end/24000,level:Math.min(1,Math.sqrt(sum/(end-offset))*7)});
+    }
+    if(this.avatarFrame)return;
+    const animate=()=>{
+      this.avatarFrame=null;
+      if(this.stopped)return;
+      const now=this.outputContext.currentTime;
+      while(this.audioEnvelope.length&&this.audioEnvelope[0].end<=now)this.audioEnvelope.shift();
+      const next=this.audioEnvelope[0];
+      this.callbacks.onAudioLevel(next&&now>=next.start?next.level:0);
+      if(this.audioEnvelope.length)this.avatarFrame=requestAnimationFrame(animate);
+    };
+    this.avatarFrame=requestAnimationFrame(animate);
+  }
+  clearAudio(){if(this.avatarFrame)cancelAnimationFrame(this.avatarFrame);this.avatarFrame=null;this.audioEnvelope=[];this.callbacks.onAudioLevel?.(0);this.sources.forEach(source=>{try{source.stop();}catch{}});this.sources.clear();this.nextPlay=0;}
   sendText(text){this.session?.sendClientContent({turns:[{role:'user',parts:[{text}]}],turnComplete:true});}
   toggleMute(){this.muted=!this.muted;this.stream?.getAudioTracks().forEach(track=>track.enabled=!this.muted);if(this.muted)this.session?.sendRealtimeInput({audioStreamEnd:true});this.callbacks.onState(this.muted?'Microphone muted':'Listening to you');return this.muted;}
   stop(){this.stopped=true;++this.generation;clearTimeout(this.timeout);clearTimeout(this.closeTimer);this.clearAudio();this.stream?.getTracks().forEach(t=>t.stop());this.microphone?.disconnect();this.processor?.disconnect();this.session?.close();this.inputContext?.close().catch(()=>{});this.outputContext?.close().catch(()=>{});this.session=null;}
