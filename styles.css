@@ -247,7 +247,7 @@ body[data-page=dashboard]{height:100vh;overflow:hidden;background:#f6f8f5}.staff
 @media(max-width:760px){body[data-page=patient]{overflow:hidden;height:100svh}.patient-topbar{height:auto!important;min-height:58px;display:grid!important;grid-template-columns:1fr auto;padding:10px 14px!important}.patient-actions{grid-column:1/-1;width:100%;justify-content:space-between;gap:6px}.language-tabs{overflow:auto}.language-tabs button{padding:7px 9px}.talk-panel{height:100svh!important;min-height:0;padding:126px 14px 42px}.patient-clock span{font-size:22px!important}.patient-clock small{font-size:12px!important}.patient-clock p{font-size:10px!important}.talk-button{width:136px;height:136px}.mic-icon{transform:scale(.76)}.tap-subtitle{font-size:16px;margin-bottom:14px}.emergency-note{margin-top:10px;padding:11px 14px;font-size:14px}.requests-title{font-size:19px;margin-top:12px}.patient-requests{max-height:none!important;margin-bottom:54px;overflow:auto!important}.patient-request-card{grid-template-columns:42px 1fr;gap:8px}.patient-request-card .progress-bars,.patient-request-card>span{justify-self:start}.settings-grid{grid-template-columns:1fr}.staff-layout,.sidebar-collapsed .staff-layout{display:block;height:auto}.department-sidebar{border-right:0}.sidebar-collapsed .department-sidebar .eyebrow,.sidebar-collapsed .department-sidebar nav{display:block}.sidebar-collapsed .department-sidebar{padding:22px 16px;overflow:auto}.staff-metrics{height:auto;grid-template-columns:1fr 1fr}.staff-layout,.staff-board{overflow:visible}.staff-table{height:auto}.staff-table-head{display:none}.staff-row{grid-template-columns:1fr;gap:0}.staff-row>div{padding:9px 14px}}
 
 .mobile-language-pill,.mobile-menu-button,.mobile-menu-backdrop,.sheet-handle,.sheet-label{display:none}
-@media(max-width:760px){
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){
 body[data-page=patient]{height:100svh;overflow:hidden;background:#fbfdfb!important}
 body[data-page=patient] .patient-topbar{height:58px!important;min-height:58px!important;padding:0 18px!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:10px!important}
 body[data-page=patient] .room-chip{min-width:0;gap:0}
@@ -320,30 +320,20 @@ body[data-page=patient] .patient-request-card{grid-template-columns:46px minmax(
 body[data-theme=night] .request-progress{--progress-green:#62c6a8;--progress-gray:#53645d}
 body[data-theme=night] .progress-step.reached:not(.walking) .progress-circle{color:#0d1c17}
 @media(max-width:900px) and (min-width:761px){body[data-page=patient] .patient-request-card{grid-template-columns:40px minmax(0,1fr) 285px}}
-@media(max-width:760px){
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){
 body[data-page=patient] .patient-request-card{grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto auto;padding:12px;gap:12px 10px}
 body[data-page=patient] .patient-request-card .request-icon{grid-row:1}
 body[data-page=patient] .request-progress{grid-column:1/-1;grid-row:2;width:100%}
 .progress-circle{width:32px;height:32px}.progress-label{font-size:13px}
 }
 
-/* Care companion portrait and an on-demand request list. */
+/* Patient controls and an on-demand request list. */
 .patient-header-controls{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
 .requests-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex-shrink:0;border:1px solid #ffffff66;background:#ffffff15;color:white;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:800}
 .requests-count{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:50%;background:#fff;color:#276c58;font-size:11px}
 .requests-count[hidden]{display:none}
 body[data-page=patient] .patient-topbar{grid-template-columns:minmax(160px,1fr) auto minmax(0,1.8fr)}
 body[data-page=patient] .talk-panel{justify-content:center;padding:72px 20px 50px!important;gap:0}
-body[data-page=patient] .avatar-button{--mouth-open:.02;display:block;width:clamp(180px,39svh,360px);height:clamp(200px,43svh,400px);margin:0 auto;border:0;border-radius:40%;background:transparent;box-shadow:none;isolation:auto;flex:none;overflow:visible}
-body[data-page=patient] .avatar-button::before,body[data-page=patient] .avatar-button::after{display:none}
-.care-avatar{display:block;width:100%;height:100%;overflow:visible}
-.avatar-person{transform-origin:180px 380px;animation:avatarBreathe 4.5s ease-in-out infinite}
-.avatar-eyes{transform-box:fill-box;transform-origin:center;animation:avatarBlink 6s infinite}
-.avatar-mouth-open{transform-origin:180px 211px;transform:scaleY(var(--mouth-open));transition:transform 45ms linear}
-.avatar-listening-ring{opacity:0;transform-origin:180px 195px}
-body[data-voice-state=listening] .avatar-listening-ring{animation:avatarListen 2.6s ease-in-out infinite}
-body[data-voice-state=connecting] .avatar-listening-ring{opacity:.65;stroke-dasharray:70 30;animation:startupSpin 7s linear infinite}
-body[data-voice-state=speaking] .avatar-person{animation:avatarBreathe 3s ease-in-out infinite}
 body[data-page=patient] .talk-action{min-height:58px;margin:2px 0 5px}
 body[data-page=patient] .talk-action h1#tap-title{font-size:clamp(22px,2.5vw,30px)}
 body[data-page=patient] .voice-startup{display:block!important;visibility:visible;min-height:1.5em;font-size:15px;line-height:1.5;margin:0 auto 8px;flex:none}
@@ -359,16 +349,12 @@ body[data-page=patient] dialog.requests-dialog{width:min(1040px,calc(100vw - 36p
 body[data-page=patient] .requests-dialog .patient-requests{max-height:calc(85svh - 130px)!important;overflow:auto!important;margin:0;padding:0 3px 0 0;min-height:0}
 .requests-empty{text-align:center;padding:32px 16px;color:var(--patient-muted)}
 body[data-page=patient][data-theme=night] .requests-dialog .patient-request-card{background:var(--patient-panel)}
-@keyframes avatarBreathe{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-2px) scaleY(1.008)}}
-@keyframes avatarBlink{0%,43%,47%,100%{transform:scaleY(1)}45%{transform:scaleY(.08)}}
-@keyframes avatarListen{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.75;transform:scale(1.025)}}
-@media(max-width:1100px) and (min-width:761px){body[data-page=patient] .patient-clock{display:none!important}body[data-page=patient] .patient-topbar{grid-template-columns:1fr auto}.patient-header-controls{gap:7px}body[data-page=patient] .patient-actions{gap:6px}.requests-button{padding:8px}}
-@media(max-width:760px){
+@media(max-width:1500px) and (min-width:761px){body[data-page=patient] .patient-clock{display:none!important}body[data-page=patient] .patient-topbar{grid-template-columns:1fr auto}.patient-header-controls{gap:7px}body[data-page=patient] .patient-actions{gap:6px}.requests-button{padding:8px}}
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){
 body[data-page=patient] .patient-topbar{grid-template-columns:minmax(60px,1fr) auto!important;padding:0 12px!important;gap:6px!important}
 .patient-header-controls{gap:6px}.requests-button{font-size:12px;padding:8px 10px;min-height:38px}.requests-count{min-width:17px;height:17px;font-size:10px}
 body[data-page=patient] .room-chip strong{font-size:15px}.mobile-language-pill{padding:0 10px;font-size:12px}.mobile-menu-button{width:34px;min-height:38px}.mobile-language-pill span{display:none}
 body[data-page=patient] .talk-panel{padding:70px 18px 18px!important;justify-content:center}
-body[data-page=patient] .avatar-button{width:clamp(160px,33svh,300px);height:clamp(180px,37svh,333px)}
 body[data-page=patient] .talk-action{min-height:64px;margin:4px 0}
 body[data-page=patient] .talk-action h1#tap-title{font-size:23px}
 body[data-page=patient] .voice-startup{font-size:13px;min-height:3em;margin-bottom:5px}
@@ -378,6 +364,68 @@ body[data-page=patient] .emergency-note{font-size:13px;padding:10px;line-height:
 body[data-page=patient] dialog.requests-dialog{padding:18px 12px;width:calc(100vw - 24px)}
 .requests-dialog-header h2{font-size:20px}.requests-dialog-header{margin-bottom:14px}
 }
-@media(max-height:650px){body[data-page=patient] .avatar-button{width:150px;height:166px}body[data-page=patient] .talk-panel{justify-content:flex-start;padding-top:66px!important;overflow:auto}body[data-page=patient] .talk-copy .tap-subtitle{font-size:14px}}
-@media(prefers-reduced-motion:reduce){.avatar-person,.avatar-eyes,.avatar-listening-ring{animation:none!important}.avatar-mouth-open{transform:scaleY(.02);transition:none}}
 @media(max-width:360px){.requests-button{max-width:108px;padding:8px 6px;font-size:11px}#requests-button-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-language-pill{max-width:72px;padding:0 7px}.mobile-language-pill strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-menu-button{width:28px}.patient-header-controls{gap:4px}body[data-page=patient] .room-chip strong{font-size:13px}}
+
+/* Glowing microphone: stable position with connecting, listening and speaking feedback. */
+html:has(body[data-page=patient]),body[data-page=patient]{touch-action:pan-x pan-y;overscroll-behavior:none}
+body[data-page=patient] *{touch-action:pan-x pan-y}
+body[data-page=patient] .hero-mic{--voice-level:0;position:relative;display:grid;place-items:center;isolation:isolate;width:clamp(160px,29svh,250px);height:clamp(160px,29svh,250px);padding:0;margin:22px auto 28px;border:1px solid #ffffff70;border-radius:50%;background:radial-gradient(circle at 33% 22%,#4b9b7e 0%,#25735c 48%,#175743 100%);box-shadow:inset 0 2px 3px #ffffff38,0 0 0 12px #43856b10,0 0 0 25px #43856b08,0 20px 55px #174b3726;flex:none;transition:box-shadow .2s ease,filter .2s ease}
+body[data-page=patient] .hero-mic:hover:not(:disabled){filter:brightness(1.06)}
+body[data-page=patient] .hero-mic:focus-visible{outline:3px solid #72b69b;outline-offset:18px}
+.hero-mic-icon{display:block;width:42%;height:42%;fill:none;stroke:white;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 2px #0f382b22)}
+body[data-page=patient] .hero-mic::before,body[data-page=patient] .hero-mic::after{display:block;position:absolute;inset:-16px;content:"";border:1.5px solid #66a98b;border-radius:50%;z-index:-1;opacity:0}
+body[data-voice-state=idle] .hero-mic::before{opacity:.25;animation:micBreathe 4s ease-in-out infinite}
+body[data-voice-state=connecting] .hero-mic::before{opacity:.8;border-color:transparent;border-top-color:#72b69b;animation:startupSpin 1.2s linear infinite}
+body[data-voice-state=connecting] .hero-mic::after{animation:none;opacity:0}
+body[data-voice-state=listening] .hero-mic::before,body[data-voice-state=listening] .hero-mic::after{animation:talkPulse 2.2s ease-out infinite}
+body[data-voice-state=listening] .hero-mic::after{animation-delay:1.1s}
+body[data-voice-state=speaking] .hero-mic{box-shadow:inset 0 2px 3px #ffffff38,0 0 0 calc(12px + var(--voice-level)*18px) #43856b20,0 0 0 calc(25px + var(--voice-level)*24px) #43856b10,0 20px 55px #174b3726}
+body[data-voice-state=speaking] .hero-mic::before,body[data-voice-state=speaking] .hero-mic::after{animation:none;opacity:0}
+@keyframes micBreathe{0%,100%{transform:scale(1);opacity:.2}50%{transform:scale(1.045);opacity:.4}}
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){
+body[data-page=patient] .hero-mic{width:clamp(160px,24svh,260px);height:clamp(160px,24svh,260px);margin:22px auto 30px}
+body[data-page=patient] input,body[data-page=patient] select,body[data-page=patient] textarea{font-size:16px!important}
+}
+@media(max-height:650px){body[data-page=patient] .hero-mic{width:136px;height:136px;margin:12px auto 18px}body[data-page=patient] .talk-panel{justify-content:flex-start;padding-top:76px!important;overflow:auto}body[data-page=patient] .talk-copy .tap-subtitle{font-size:14px}}
+@media(prefers-reduced-motion:reduce){body[data-page=patient] .hero-mic::before,body[data-page=patient] .hero-mic::after{animation:none!important}body[data-page=patient] .hero-mic{transition:none}}
+
+/* Larger bedside header: twice the previous height, with larger touch controls. */
+body[data-page=patient] .patient-topbar{height:112px;min-height:112px;padding:0 24px}
+body[data-page=patient] .patient-actions{gap:10px}
+body[data-page=patient] .patient-actions .language-tabs button{min-height:64px;font-size:18px;padding:12px 14px}
+body[data-page=patient] .patient-actions .text-button{min-height:68px;font-size:18px;padding:14px 18px!important}
+body[data-page=patient] .requests-button{min-height:76px;font-size:18px;padding:16px 20px;border-radius:14px;gap:10px}
+body[data-page=patient] .requests-count{min-width:28px;height:28px;font-size:14px}
+body[data-page=patient] .room-chip strong{font-size:24px}.room-chip small{font-size:18px}
+body[data-page=patient] .patient-clock span{font-size:40px!important}.patient-clock small{font-size:24px!important}.patient-clock p{font-size:16px!important}
+body[data-page=patient] .talk-panel{padding-top:132px!important}
+.requests-button-icon{display:none;width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){
+body[data-page=patient] .patient-topbar{height:116px!important;min-height:116px!important;padding:0 16px!important;gap:10px!important}
+body[data-page=patient] .patient-header-controls{gap:10px}
+body[data-page=patient] .mobile-language-pill{min-height:80px;font-size:22px;padding:0 18px;border-radius:22px;max-width:none}
+body[data-page=patient] .mobile-menu-button{width:68px;min-height:80px;font-size:28px;border-radius:22px}
+body[data-page=patient] .requests-button{min-height:76px;font-size:20px;padding:16px 20px;max-width:none}
+body[data-page=patient] .patient-actions{gap:14px}
+body[data-page=patient] .patient-actions .language-tabs button,body[data-page=patient] .patient-actions .text-button{min-height:80px!important;font-size:22px!important}
+body[data-page=patient] .talk-panel{padding-top:136px!important}
+}
+@media(max-width:600px){
+body[data-page=patient] .patient-topbar{padding:0 10px!important;gap:6px!important}
+body[data-page=patient] .patient-header-controls{gap:6px}
+body[data-page=patient] .room-chip strong{font-size:20px}
+body[data-page=patient] .requests-button{position:relative;width:68px;padding:0;min-height:76px}
+.requests-button-icon{display:block}#requests-button-label{display:none}
+body[data-page=patient] .requests-count{position:absolute;right:2px;top:3px;min-width:22px;height:22px;font-size:12px}
+body[data-page=patient] .mobile-language-pill{font-size:18px;padding:0 10px;max-width:112px}
+body[data-page=patient] .mobile-menu-button{width:58px}
+}
+@media(max-width:360px){body[data-page=patient] .room-chip strong{font-size:16px}body[data-page=patient] .patient-header-controls{gap:4px}body[data-page=patient] .requests-button{width:58px}body[data-page=patient] .mobile-language-pill{font-size:16px;padding:0 8px;max-width:94px}body[data-page=patient] .mobile-menu-button{width:48px}}
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){body[data-page=patient] .patient-actions{visibility:hidden;pointer-events:none;max-height:calc(100svh - 130px);overflow-y:auto}body[data-page=patient].mobile-menu-open .patient-actions{visibility:visible;pointer-events:auto}}
+@media(min-width:761px) and (max-width:1100px) and (orientation:landscape){
+body[data-page=patient] .room-chip small,body[data-page=patient] .room-chip>span,body[data-page=patient] .display-toggle{display:none!important}
+body[data-page=patient] .patient-actions .language-tabs button{font-size:16px;padding:12px 8px}
+body[data-page=patient] .patient-actions .text-button{padding:14px 12px!important;font-size:16px}
+body[data-page=patient] .requests-button{width:76px;padding:0;position:relative}#requests-button-label{display:none}.requests-button-icon{display:block}
+body[data-page=patient] .requests-count{position:absolute;right:2px;top:3px;min-width:22px;height:22px;font-size:12px}
+}

@@ -1,5 +1,5 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js';
-import {LiveCompanion} from './voice.js?v=avatar-20261017';
+import {LiveCompanion} from './voice.js?v=mic-20261019';
 const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
 const langText={
   auto:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
@@ -26,9 +26,9 @@ function setStartupState(stage){
   status.lang={english:'en',malayalam:'ml',arabic:'ar'}[language()]||'ml';
   status.textContent=(startupCopy[language()]||startupCopy.malayalam)[stage];
 }
-function setAvatarAudio(level=0){$('start').style.setProperty('--mouth-open',String(Math.max(.02,Math.min(1,level))));}
+function setMicAudio(level=0){$('start').style.setProperty('--voice-level',String(Math.max(0,Math.min(1,level))));}
 function setVoiceState(label=''){
-  const normalized=String(label).toLowerCase();if(!normalized.includes('speak'))setAvatarAudio(0);
+  const normalized=String(label).toLowerCase();if(!normalized.includes('speak'))setMicAudio(0);
   // Startup feedback remains until actual audio or a ready listening event.
   if(active&&document.body.dataset.voiceState==='connecting'&&!/speak|listen/.test(normalized))return;
   $('voice-startup').hidden=true;
@@ -51,7 +51,7 @@ function syncSettingsToUI(){
   document.querySelectorAll('#language-tabs button').forEach(button=>button.classList.toggle('selected',button.dataset.language===language()));
   $('mobile-language-label').textContent=languageName[language()]||'Auto';
   $('setting-language').value=language();$('setting-display').value=settings.display;$('ward-unit').value=settings.ward;$('patient-name').value=settings.patientName;$('patient-uhid').value=settings.uhid;$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;if(store.profile)$('demo-room').value=store.profile.room;
-  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);$('requests-dialog-title').textContent=copy.requests;const requestCopy={english:['Requests','No requests today.'],malayalam:['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'],arabic:['الطلبات','لا توجد طلبات اليوم.']}[language()]||['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'];$('requests-button-label').textContent=requestCopy[0];$('requests-empty').textContent=requestCopy[1];updateTheme();
+  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);$('requests-dialog-title').textContent=copy.requests;const requestCopy={english:['Requests','No requests today.'],malayalam:['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'],arabic:['الطلبات','لا توجد طلبات اليوم.']}[language()]||['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'];$('requests-button-label').textContent=requestCopy[0];$('requests-button').setAttribute('aria-label',requestCopy[0]);$('requests-button').title=requestCopy[0];$('requests-empty').textContent=requestCopy[1];updateTheme();
 }
 function setMobileMenu(open){
   document.body.classList.toggle('mobile-menu-open',open);
@@ -68,7 +68,7 @@ async function start(){
   try{
     setSession(true);const lang=language()==='auto'?'malayalam':language();const greeting=lang==='malayalam'?'ആസ്റ്റർ മെഡിസിറ്റിയിലേക്ക് സ്വാഗതം. ഞാൻ താങ്കളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?':lang==='arabic'?'مرحباً بكم في أستر ميديسيتي. كيف يمكنني مساعدتك؟':'Welcome to Aster Medicity. How can I assist you?';bubble(greeting);speak(greeting,lang);
     if(!store.demo){
-      live=new LiveCompanion(store,{languageMode:language(),onText:text=>{if(attempt===startAttempt)bubble(text);},onState:state=>{if(attempt===startAttempt)setVoiceState(state);},onStartup:stage=>{if(attempt===startAttempt)setStartupState(stage);},onAudioLevel:level=>{if(attempt===startAttempt)setAvatarAudio(level);},onTiming:timing=>console.debug('[Voice startup]',timing.stage,timing.elapsedMs+'ms'),onError:message=>{if(attempt===startAttempt){toast(message);end();}},onEnd:()=>{if(attempt===startAttempt)scheduleAutoEnd();},onRequest:async args=>{
+      live=new LiveCompanion(store,{languageMode:language(),onText:text=>{if(attempt===startAttempt)bubble(text);},onState:state=>{if(attempt===startAttempt)setVoiceState(state);},onStartup:stage=>{if(attempt===startAttempt)setStartupState(stage);},onAudioLevel:level=>{if(attempt===startAttempt)setMicAudio(level);},onTiming:timing=>console.debug('[Voice startup]',timing.stage,timing.elapsedMs+'ms'),onError:message=>{if(attempt===startAttempt){toast(message);end();}},onEnd:()=>{if(attempt===startAttempt)scheduleAutoEnd();},onRequest:async args=>{
         const lang=args.patientLanguage&&args.patientLanguage!=='other'?args.patientLanguage:requestLanguage(args.summary);
         try{const id=await store.create(args.category,args.summary,crypto.randomUUID(),lang);toast(`Request sent · ${categoryLabel(args.category)}`);return {requestId:id,status:'sent'};}catch(error){toast('Request was not sent. '+error.message);return {status:'failed',error:'Request could not be saved.'};}
       }});
@@ -113,3 +113,7 @@ $('login-form').addEventListener('submit',event=>{if(store.profile&&$('new-pin')
 updateTheme();setInterval(updateTheme,30000);
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';$('start').disabled=true;});
 window.addEventListener('pagehide',end);
+
+// Tablet kiosk gestures: retain one-finger scrolling inside lists and forms.
+document.addEventListener('touchmove',event=>{if(event.touches.length>1&&event.cancelable)event.preventDefault();},{passive:false});
+document.addEventListener('gesturestart',event=>{if(event.cancelable)event.preventDefault();},{passive:false});
