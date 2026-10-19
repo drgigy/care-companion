@@ -441,3 +441,47 @@ body[data-page=patient] .patient-topbar{grid-template-columns:minmax(160px,1fr) 
 .settings-display-control button{min-height:44px;text-align:left}
 @media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){.mic-clock #patient-time{font-size:38px}.mic-clock #patient-period{font-size:17px}.mic-clock #patient-date{font-size:14px}.mic-clock{margin-bottom:5px}}
 @media(max-height:700px){.mic-clock #patient-time{font-size:30px}.mic-clock #patient-period{font-size:15px}.mic-clock #patient-date{font-size:12px;margin-top:5px}.mic-clock{margin-bottom:0}}
+
+/* Calm kiosk: one viewport, with persistent language and bottom staff controls. */
+body[data-page=patient].calm-kiosk{--patient-bg:#f3f6f2;--patient-ink:#20302a;--patient-muted:#728078;background:var(--patient-bg)!important;height:100svh;min-height:0;overflow:hidden}
+body[data-page=patient].calm-kiosk[data-theme=night]{--patient-bg:#111f1a;--patient-ink:#e3ebe5;--patient-muted:#9caea3}
+.calm-kiosk .kiosk-shell{width:min(100%,900px);height:100svh;margin:0 auto;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:16px;padding:clamp(18px,3svh,34px) clamp(20px,4vw,46px) max(14px,env(safe-area-inset-bottom))}
+body[data-page=patient].calm-kiosk .patient-topbar.kiosk-topbar{position:static!important;height:auto!important;min-height:0!important;display:flex!important;justify-content:space-between;align-items:flex-start;gap:16px!important;padding:0!important;background:transparent!important;color:var(--patient-ink);border:0;z-index:auto}
+body[data-page=patient].calm-kiosk .room-chip{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+body[data-page=patient].calm-kiosk .room-chip strong{font-size:clamp(25px,3.8vw,36px);line-height:1.15;white-space:nowrap;font-weight:800;letter-spacing:-1px}
+body[data-page=patient].calm-kiosk .room-chip small{display:block!important;font-size:clamp(14px,2vw,18px);line-height:1.3;color:var(--patient-muted)}
+.calm-kiosk .mic-clock{display:block!important;text-align:right;margin:0;flex:none;padding-top:2px}
+.calm-kiosk .mic-clock>div{justify-content:flex-end;gap:5px}
+.calm-kiosk .mic-clock #patient-time{font-size:clamp(24px,3.5vw,34px);letter-spacing:-1px}
+.calm-kiosk .mic-clock #patient-period{font-size:clamp(16px,2.7vw,25px);color:var(--patient-ink);font-weight:800}
+.calm-kiosk .mic-clock #patient-date{margin-top:7px;font-size:clamp(13px,1.8vw,16px);line-height:1.3}
+.kiosk-languages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:5px;gap:4px;border:1.5px solid #dce5df;border-radius:999px;background:var(--patient-panel);width:100%;margin:0 auto}
+.kiosk-languages button{border:0;border-radius:999px;min-height:46px;min-width:0;padding:8px 6px;background:transparent;color:var(--patient-muted);font-size:clamp(13px,2vw,17px);font-weight:800}
+.kiosk-languages button.selected{background:#3e705e;color:#fff}
+body[data-page=patient].calm-kiosk .patient-main{height:auto!important;min-height:0;width:100%!important;padding:0!important;overflow:hidden}
+body[data-page=patient].calm-kiosk .talk-panel{width:100%;height:100%!important;min-height:0;padding:0!important;margin:0;display:grid;grid-template-columns:1fr;grid-template-rows:minmax(110px,1fr) auto auto auto auto;align-items:center;gap:8px;overflow:hidden}
+body[data-page=patient].calm-kiosk .hero-mic{height:100%;width:auto;aspect-ratio:1;max-height:360px;max-width:min(75vw,360px);min-height:0;min-width:0;justify-self:center;align-self:center;margin:0!important;border:10px solid #fff;background:linear-gradient(135deg,#619b82,#345c4e);box-shadow:0 0 0 1px #d0e1d7,0 18px 34px #244d3924;flex:none}
+body[data-page=patient].calm-kiosk .hero-mic-icon{width:38%;height:38%;stroke-width:4}
+body[data-page=patient].calm-kiosk .hero-mic::before,body[data-page=patient].calm-kiosk .hero-mic::after{inset:-16px}
+body[data-page=patient].calm-kiosk .talk-action{min-height:58px;margin:0;justify-self:center;max-width:100%;width:100%}
+body[data-page=patient].calm-kiosk .talk-action h1#tap-title{font-size:clamp(25px,3.6vw,34px);line-height:1.18;max-width:min(100%,340px);font-weight:800;letter-spacing:-.5px;margin:0 auto}
+body[data-page=patient].calm-kiosk .voice-startup{font-size:13px;line-height:1.35;min-height:1.4em;margin:0;max-width:100%}
+body[data-page=patient].calm-kiosk .talk-copy{margin:0;max-width:100%}
+body[data-page=patient].calm-kiosk .talk-copy .tap-subtitle{font-size:clamp(14px,1.9vw,18px);line-height:1.45;font-weight:500;color:var(--patient-muted);max-width:650px;margin:0 auto}
+body[data-page=patient].calm-kiosk .emergency-note{width:100%;max-width:100%;font-size:clamp(12px,1.8vw,16px);line-height:1.4;padding:12px 14px;margin:4px auto 0;background:#fcf0ed;border-color:#edb7ae;color:#b73224;border-radius:15px;font-weight:800}
+body[data-page=patient].calm-kiosk footer.kiosk-footer{position:static!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px 14px;margin:0;padding:0;border:0;line-height:1.3;width:100%;min-width:0;color:var(--patient-muted);font-size:12px;z-index:auto}
+body[data-page=patient].calm-kiosk .kiosk-footer button{min-height:48px;background:transparent;border:0;box-shadow:none;border-radius:10px;color:#3e705e;padding:6px 0;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:flex-start;gap:6px;max-width:100%;width:auto}
+body[data-page=patient].calm-kiosk .kiosk-footer svg{display:block;width:21px;height:21px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body[data-page=patient].calm-kiosk #requests-button-label{display:inline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+body[data-page=patient].calm-kiosk .requests-count{position:static;display:inline;min-width:0;height:auto;font-size:inherit;background:none;color:inherit}
+body[data-page=patient].calm-kiosk .requests-count[hidden]{display:none}
+.calm-kiosk .requests-count::before{content:"("}.calm-kiosk .requests-count::after{content:")"}
+.calm-kiosk .kiosk-brand{grid-column:1/-1;text-align:center;text-transform:uppercase;font-size:10px;letter-spacing:2px;line-height:1.3}
+body[data-page=patient].calm-kiosk[data-theme=night] .kiosk-footer button{color:#99c9af}
+@media(max-width:450px){.calm-kiosk .kiosk-shell{padding:20px 20px max(12px,env(safe-area-inset-bottom));gap:12px}.kiosk-languages button{min-height:40px;font-size:13px;padding:6px 3px}body[data-page=patient].calm-kiosk .hero-mic{border-width:9px;max-width:78vw}body[data-page=patient].calm-kiosk .kiosk-footer button{font-size:12px;gap:4px}body[data-page=patient].calm-kiosk .kiosk-footer svg{width:18px;height:18px}body[data-page=patient].calm-kiosk footer.kiosk-footer{column-gap:9px}body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:280px}body[data-page=patient].calm-kiosk .emergency-note{padding:10px 11px}}
+@media(max-height:650px){.calm-kiosk .kiosk-shell{padding-top:14px;gap:8px}.kiosk-languages button{min-height:34px}body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(72px,1fr) auto auto auto auto;gap:5px}body[data-page=patient].calm-kiosk .talk-action{min-height:44px}body[data-page=patient].calm-kiosk .talk-action h1#tap-title{font-size:23px}body[data-page=patient].calm-kiosk .talk-copy .tap-subtitle{font-size:13px}body[data-page=patient].calm-kiosk .emergency-note{font-size:12px;padding:8px}body[data-page=patient].calm-kiosk .hero-mic{border-width:7px}}
+body[data-page=patient].calm-kiosk footer.kiosk-footer{transform:none!important;inset:auto!important}
+.calm-kiosk .kiosk-brand{max-width:none;justify-self:stretch}
+body[data-page=patient].calm-kiosk .hero-mic{height:min(100%,75vw,360px);width:auto}
+@media(max-width:450px){body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:250px;font-size:30px}}
+@media(max-width:450px){body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:260px;font-size:32px;text-wrap:balance}}
