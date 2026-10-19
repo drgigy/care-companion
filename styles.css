@@ -429,3 +429,15 @@ body[data-page=patient] .patient-actions .text-button{padding:14px 12px!importan
 body[data-page=patient] .requests-button{width:76px;padding:0;position:relative}#requests-button-label{display:none}.requests-button-icon{display:block}
 body[data-page=patient] .requests-count{position:absolute;right:2px;top:3px;min-width:22px;height:22px;font-size:12px}
 }
+
+/* Date/time stays above the microphone in every orientation. */
+body[data-page=patient] .patient-topbar{grid-template-columns:minmax(160px,1fr) auto}
+.mic-clock{flex:none;text-align:center;color:var(--patient-ink);margin:0 auto 8px}
+.mic-clock>div{display:flex;align-items:baseline;justify-content:center;gap:9px;line-height:1}
+.mic-clock #patient-time{font:800 42px/1 Manrope,sans-serif;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.mic-clock #patient-period{font:700 18px/1 Manrope,sans-serif;color:var(--patient-muted)}
+.mic-clock #patient-date{margin:8px 0 0;font-size:15px;line-height:1.35;color:var(--patient-muted)}
+.settings-display-control{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:700;color:var(--muted)}
+.settings-display-control button{min-height:44px;text-align:left}
+@media(max-width:760px), (min-width:761px) and (max-width:1200px) and (orientation:portrait){.mic-clock #patient-time{font-size:38px}.mic-clock #patient-period{font-size:17px}.mic-clock #patient-date{font-size:14px}.mic-clock{margin-bottom:5px}}
+@media(max-height:700px){.mic-clock #patient-time{font-size:30px}.mic-clock #patient-period{font-size:15px}.mic-clock #patient-date{font-size:12px;margin-top:5px}.mic-clock{margin-bottom:0}}

@@ -4,15 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
 <title>Aster Care companion · Your room</title>
-<link rel="stylesheet" href="styles.css?v=mic-20261019">
+<link rel="stylesheet" href="styles.css?v=clock-20261019">
 </head>
 <body data-page="patient" data-theme="day" data-voice-state="idle">
 <header class="patient-topbar">
   <div class="room-chip"><strong id="header-room">Room 201</strong><span></span><small id="header-ward">Neuro Ward</small></div>
-  <div class="patient-clock" aria-live="polite">
-    <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
-    <p id="patient-date">Monday 12 October</p>
-  </div>
   <div class="patient-header-controls">
   <button class="requests-button" id="requests-button" type="button" aria-haspopup="dialog" aria-controls="requests-dialog"><svg class="requests-button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v3H8zM8 5H5v16h14V5h-3M8 12h8M8 16h6"/></svg><span id="requests-button-label">Requests</span><span id="requests-count" class="requests-count" hidden></span></button>
   <button class="mobile-language-pill" id="mobile-language-pill" type="button" aria-label="Change language"><span aria-hidden="true">◎</span><strong id="mobile-language-label">Auto</strong></button>
@@ -26,7 +22,6 @@
       <button data-language="malayalam" class="selected">മലയാളം</button>
       <button data-language="arabic">العربية</button>
     </div>
-    <button class="text-button display-toggle" id="display-mode">Auto · Day</button>
     <span class="sheet-label staff-label">For hospital staff</span>
     <button class="text-button" id="staff">Staff</button>
     <button class="text-button" id="account">Settings</button>
@@ -36,6 +31,11 @@
 <button class="mobile-menu-backdrop" id="mobile-menu-backdrop" type="button" aria-label="Close menu" hidden></button>
 <main class="patient-main">
   <section class="talk-panel">
+  <div class="mic-clock" aria-live="off">
+    <div><span id="patient-time">--:--</span><small id="patient-period">AM</small></div>
+    <p id="patient-date">Monday 12 October</p>
+  </div>
+
     <button class="talk-button hero-mic" id="start" aria-label="Start conversation" aria-describedby="tap-subtitle">
       <svg class="hero-mic-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
         <rect x="23" y="7" width="18" height="31" rx="9"/>
@@ -75,6 +75,7 @@
       <label>UHID <small>Optional</small><input id="patient-uhid" maxlength="40" autocomplete="off"></label>
       <label>Patient language<select id="setting-language"><option value="auto">Auto-detect</option><option value="english">English</option><option value="malayalam">മലയാളം</option><option value="arabic">العربية</option></select></label>
       <label>Display<select id="setting-display"><option value="auto">Auto by time</option><option value="day">Always day</option><option value="night">Always night</option></select></label>
+      <div class="settings-display-control"><span>Current display</span><button class="secondary" id="display-mode" type="button" aria-label="Cycle display mode: auto, day, night">Auto · Day</button></div>
       <label>Night starts<select id="night-start"></select></label>
       <label>Night ends<select id="night-end"></select></label>
       <label>New PIN <small>Optional</small><input id="new-pin" maxlength="8" inputmode="numeric" autocomplete="off"></label>
@@ -104,6 +105,6 @@
 <form id="message-form" hidden><input id="message"><button>Send</button></form>
 <button id="mic" hidden></button>
 <div id="session-controls" hidden></div>
-<script type="module" src="patient.js?v=mic-20261019"></script>
+<script type="module" src="patient.js?v=clock-20261019"></script>
 </body>
 </html>
