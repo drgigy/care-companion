@@ -485,3 +485,4 @@ body[data-page=patient].calm-kiosk footer.kiosk-footer{transform:none!important;
 body[data-page=patient].calm-kiosk .hero-mic{height:min(100%,75vw,360px);width:auto}
 @media(max-width:450px){body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:250px;font-size:30px}}
 @media(max-width:450px){body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:260px;font-size:32px;text-wrap:balance}}
+body[data-page=patient].calm-kiosk[data-voice-state=speaking] .hero-mic{box-shadow:0 0 0 1px #d0e1d7,0 0 0 calc(6px + var(--voice-level)*12px) #43856b18,0 18px 34px #244d3924}
