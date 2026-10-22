@@ -2,6 +2,8 @@ import {onCall,HttpsError} from 'firebase-functions/v2/https';
 import {defineSecret,defineString} from 'firebase-functions/params';
 import {initializeApp} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
+import {getAuth} from 'firebase-admin/auth';
+import {createAdminHandler} from './admin.js';
 import {GoogleGenAI} from '@google/genai';
 import {conversationScript,requestTool,endConversationTool} from './script.js';
 initializeApp();const db=getFirestore();const geminiKey=defineSecret('GEMINI_API_KEY');
@@ -14,7 +16,7 @@ export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInsta
   const origin=request.rawRequest.headers.origin;
   if(!origin||!origins.value().split(',').map(s=>s.trim()).includes(origin))throw new HttpsError('permission-denied','This frontend origin is not allowed.');
   const uid=request.auth.uid;const profile=await db.doc(`profiles/${uid}`).get();
-  if(!profile.exists||profile.data().role!=='room'||!profile.data().room)throw new HttpsError('permission-denied','A configured room account is required.');
+  if(!profile.exists||profile.data().role!=='room'||profile.data().disabled===true||!profile.data().room)throw new HttpsError('permission-denied','A configured room account is required.');
   const liveConfig={responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:liveVoice}}},inputAudioTranscription:{},outputAudioTranscription:{},systemInstruction:conversationScript,tools:[{functionDeclarations:[requestTool,endConversationTool]}]};
   try{
     const ai=new GoogleGenAI({apiKey:geminiKey.value(),httpOptions:{apiVersion:'v1beta'}});
@@ -22,3 +24,5 @@ export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInsta
     return {token:token.name,model:liveModel,liveConfig};
   }catch{throw new HttpsError('unavailable','The voice service is unavailable. Please try again or use a direct request.');}
 });
+
+export const masterAdmin=onCall({region:'asia-south1',maxInstances:3},createAdminHandler({db,auth:getAuth(),allowedOrigins:()=>origins.value()}));

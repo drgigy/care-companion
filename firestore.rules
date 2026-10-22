@@ -3,21 +3,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn(){return request.auth != null;}
     function profile(){return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;}
-    function staff(){return signedIn() && profile().role == 'staff';}
+    function enabled(){return signedIn() && (!('disabled' in profile()) || profile().disabled != true);}
+    function staff(){return enabled() && profile().role == 'staff';}
     match /profiles/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
-      allow update: if signedIn()
-        && request.auth.uid == uid
-        && resource.data.role == 'room'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['room'])
-        && request.resource.data.room is string
-        && request.resource.data.room.size() > 0
-        && request.resource.data.room.size() <= 12;
+      allow update: if false;
       allow create, delete: if false;
     }
     match /requests/{id} {
-      allow read: if signedIn() && (staff() || resource.data.ownerUid == request.auth.uid);
-      allow create: if signedIn() && profile().role == 'room'
+      allow read: if enabled() && (staff() || (profile().role == 'room' && resource.data.ownerUid == request.auth.uid && resource.data.room == profile().room));
+      allow create: if enabled() && profile().role == 'room'
         && request.resource.data.keys().hasAll(['room','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','acknowledgedAt','acknowledgedByEmployeeId','completedAt','completedByName','completedByEmployeeId'])
         && request.resource.data.keys().hasOnly(['room','ward','patientName','uhid','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','acknowledgedAt','acknowledgedByEmployeeId','completedAt','completedByName','completedByEmployeeId'])
         && request.resource.data.ownerUid == request.auth.uid
@@ -44,9 +39,10 @@ service cloud.firestore {
         && resource.data.status == 'new'
         && request.resource.data.status == 'in-progress'
         && request.resource.data.completedAt == null;
-      allow update: if signedIn()
+      allow update: if enabled()
         && profile().role == 'room'
         && resource.data.ownerUid == request.auth.uid
+        && resource.data.room == profile().room
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','completedAt','completedByName','completedByEmployeeId'])
         && request.resource.data.updatedAt == request.time
         && resource.data.status == 'in-progress'

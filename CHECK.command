@@ -6,4 +6,5 @@ for source_file in *.js functions/*.js tests/*.mjs; do
   node --check "$source_file"
 done
 node tests/offline.mjs
+node tests/admin.mjs
 echo "Syntax and offline checks passed. Live services still need acceptance testing."

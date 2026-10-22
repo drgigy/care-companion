@@ -1,4 +1,4 @@
-import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js';
+import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js?v=admin-20261022';
 const store=new CareStore('dashboard');let selected='all',view='active',items=[],seen=new Set(),loaded=false,sound=false,audio=null,ackId=null;
 function setSidebarCollapsed(value){
   document.body.classList.toggle('sidebar-collapsed',value);
