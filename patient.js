@@ -2,10 +2,10 @@ import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAcco
 import {LiveCompanion} from './voice.js?v=mic-20261019';
 const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
 const langText={
-  auto:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
-  english:{tap:'Tap here to speak',sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the Nurse Call button.',requests:'Your requests'},
-  malayalam:{tap:'സംസാരിക്കാൻ ഇവിടെ അമർത്തുക',sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
-  arabic:{tap:'اضغط هنا للتحدث',sub:'تحدث هنا لطلب ممرضة أو طعام أو تنظيف الغرفة أو الحسابات أو الشكاوى أو أي طلب آخر.',help:[],emergency:'في الحالات الطارئة، اضغط زر Nurse Call.',requests:'طلباتك'}
+  auto:{sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
+  english:{sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the Nurse Call button.',requests:'Your requests'},
+  malayalam:{sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
+  arabic:{sub:'تحدث هنا لطلب ممرضة أو طعام أو تنظيف الغرفة أو الحسابات أو الشكاوى أو أي طلب آخر.',help:[],emergency:'في الحالات الطارئة، اضغط زر Nurse Call.',requests:'طلباتك'}
 };
 const languageName={auto:'Auto',english:'English',malayalam:'മലയാളം',arabic:'العربية'};
 const categoryLabel=key=>categories[key]?.label||'Request';
@@ -51,14 +51,14 @@ function syncSettingsToUI(){
   document.querySelectorAll('#language-tabs button').forEach(button=>button.classList.toggle('selected',button.dataset.language===language()));
   $('mobile-language-label').textContent=languageName[language()]||'Auto';
   $('setting-language').value=language();$('setting-display').value=settings.display;$('ward-unit').value=settings.ward;$('patient-name').value=settings.patientName;$('patient-uhid').value=settings.uhid;$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;if(store.profile)$('demo-room').value=store.profile.room;
-  const copy=langText[displayLanguage()]||langText.auto;$('tap-title').textContent=copy.tap;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);$('requests-dialog-title').textContent=copy.requests;const requestCopy={english:['My requests','No requests today.'],malayalam:['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'],arabic:['الطلبات','لا توجد طلبات اليوم.']}[language()]||['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'];$('requests-button-label').textContent=requestCopy[0];$('requests-button').setAttribute('aria-label',requestCopy[0]);$('requests-button').title=requestCopy[0];$('requests-empty').textContent=requestCopy[1];updateTheme();
+  const copy=langText[displayLanguage()]||langText.auto;$('tap-subtitle').textContent=copy.sub;$('helper-card').innerHTML=copy.help.map(line=>`<p>${escapeHTML(line)}</p>`).join('');$('helper-card').hidden=!copy.help.length;$('emergency-note').textContent=copy.emergency;$('patient-requests').setAttribute('aria-label',copy.requests);$('requests-dialog-title').textContent=copy.requests;const requestCopy={english:['My requests','No requests today.'],malayalam:['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'],arabic:['الطلبات','لا توجد طلبات اليوم.']}[language()]||['അഭ്യർത്ഥനകൾ','ഇന്ന് അഭ്യർത്ഥനകളൊന്നുമില്ല.'];$('requests-button-label').textContent=requestCopy[0];$('requests-button').setAttribute('aria-label',requestCopy[0]);$('requests-button').title=requestCopy[0];$('requests-empty').textContent=requestCopy[1];updateTheme();
 }
 function setMobileMenu(open){
   document.body.classList.toggle('mobile-menu-open',open);
   $('mobile-menu-button').setAttribute('aria-expanded',String(open));
   $('mobile-menu-backdrop').hidden=!open;
 }
-function setSession(value){active=value;$('start').hidden=false;$('start').disabled=value||!store.profile;$('end').hidden=!value;$('tap-title').setAttribute('aria-hidden',String(value));$('chat').hidden=true;if(value&&!store.demo)setStartupState('preparing');else setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
+function setSession(value){active=value;$('start').hidden=false;$('start').disabled=!store.profile;$('start').setAttribute('aria-label',value?'Stop conversation':'Start conversation');$('start').setAttribute('aria-pressed',String(value));$('mic-action-label').textContent=value?'Stop':'Start';$('chat').hidden=true;if(value&&!store.demo)setStartupState('preparing');else setVoiceState(value?'listening':'idle');document.body.classList.toggle('conversation-active',value);}
 function warmVoice(){if(store.profile&&!store.demo)LiveCompanion.warm(store).catch(()=>{});}
 function end(){++startAttempt;starting=false;clearTimeout(autoEndTimer);autoEndTimer=null;live?.stop();live=null;if('speechSynthesis'in window)speechSynthesis.cancel();$('chat').replaceChildren();$('pending').hidden=true;setSession(false);$('start').disabled=!store.profile;warmVoice();}
 function scheduleAutoEnd(delay=3500){clearTimeout(autoEndTimer);autoEndTimer=setTimeout(end,delay);}
@@ -74,12 +74,12 @@ async function start(){
       }});
       await live.start();if(attempt!==startAttempt)return;if(!live||live.stopped)throw Error('The voice session closed before it was ready. Please start again.');
     }
-  }catch(error){if(attempt===startAttempt){end();toast('Could not start: '+error.message);}}finally{if(attempt===startAttempt){starting=false;$('start').disabled=active||!store.profile;}}
+  }catch(error){if(attempt===startAttempt){end();toast('Could not start: '+error.message);}}finally{if(attempt===startAttempt){starting=false;$('start').disabled=!store.profile;}}
 }
 function showConfirmation(category,summary,id,patientLanguage){$('pending').hidden=false;$('pending').innerHTML=`<p>${escapeHTML(summary)}</p><button class="primary" id="confirm-request">Send request</button> <button class="text-button" id="cancel-request">Cancel</button>`;$('confirm-request').onclick=async()=>{try{await store.create(category,summary,id||crypto.randomUUID(),patientLanguage);$('pending').hidden=true;toast('Request sent');}catch(error){toast(error.message);}};$('cancel-request').onclick=()=>$('pending').hidden=true;}
 function handleTyped(text){bubble(text,true);const lang=requestLanguage(text),category=guessCategory(text)||'guestRelations';showConfirmation(category,text,null,lang);}
 $('requests-button').onclick=()=>{setMobileMenu(false);$('requests-dialog').showModal();};$('requests-close').onclick=()=>$('requests-dialog').close();
-$('start').onclick=start;$('end').onclick=end;$('mobile-menu-button').onclick=() => setMobileMenu(!document.body.classList.contains('mobile-menu-open'));$('mobile-language-pill').onclick=()=>setMobileMenu(true);$('mobile-menu-backdrop').onclick=()=>setMobileMenu(false);$('message-form').onsubmit=e=>{e.preventDefault();const text=$('message').value.trim();$('message').value='';if(text)handleTyped(text);};$('display-mode').onclick=()=>{const mode=$('setting-display').value;settings.display=mode==='auto'?'day':mode==='day'?'night':'auto';settings=saveTabletSettings(settings);$('setting-display').value=settings.display;updateTheme();};
+$('start').onclick=()=>{if(active||starting)end();else start();};$('mobile-menu-button').onclick=() => setMobileMenu(!document.body.classList.contains('mobile-menu-open'));$('mobile-language-pill').onclick=()=>setMobileMenu(true);$('mobile-menu-backdrop').onclick=()=>setMobileMenu(false);$('message-form').onsubmit=e=>{e.preventDefault();const text=$('message').value.trim();$('message').value='';if(text)handleTyped(text);};$('display-mode').onclick=()=>{const mode=$('setting-display').value;settings.display=mode==='auto'?'day':mode==='day'?'night':'auto';settings=saveTabletSettings(settings);$('setting-display').value=settings.display;updateTheme();};
 $('account').addEventListener('click',()=>setMobileMenu(false));
 document.addEventListener('pointerdown',unlockNotificationAudio,{passive:true});
 document.addEventListener('keydown',unlockNotificationAudio);

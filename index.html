@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
 <title>Aster Care companion · Your room</title>
-<link rel="stylesheet" href="styles.css?v=calm-20261019">
+<link rel="stylesheet" href="styles.css?v=start-stop-20261022">
 </head>
 <body class="calm-kiosk" data-page="patient" data-theme="day" data-voice-state="idle">
 <div class="kiosk-shell">
@@ -23,17 +23,16 @@
 </nav>
 <main class="patient-main">
   <section class="talk-panel">
-    <button class="talk-button hero-mic" id="start" aria-label="Start conversation" aria-describedby="tap-subtitle">
+    <div class="mic-control">
+    <button class="talk-button hero-mic" id="start" aria-label="Start conversation" aria-pressed="false" aria-describedby="tap-subtitle" type="button">
       <svg class="hero-mic-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
         <rect x="23" y="7" width="18" height="31" rx="9"/>
         <path d="M15 29v3a17 17 0 0 0 34 0v-3M32 49v9M23 58h18"/>
       </svg>
+      <span class="mic-action-label" id="mic-action-label">Start</span>
     </button>
-    <div class="talk-action">
-      <h1 id="tap-title">Tap to talk</h1>
-      <button class="secondary stop-talk" id="end" hidden>Stop conversation</button>
-    </div>
     <p id="voice-startup" class="voice-startup" role="status" aria-live="polite" hidden></p>
+    </div>
     <div class="talk-copy">
       <p class="tap-subtitle" id="tap-subtitle">സംസാരിക്കാൻ ടാപ്പ് ചെയ്യുക · اضغط للتحدث</p>
     </div>
@@ -100,6 +99,6 @@
 <form id="message-form" hidden><input id="message"><button>Send</button></form>
 <button id="mic" hidden></button>
 <div id="session-controls" hidden></div>
-<script type="module" src="patient.js?v=calm-20261019"></script>
+<script type="module" src="patient.js?v=start-stop-20261022"></script>
 </body>
 </html>

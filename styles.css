@@ -486,3 +486,21 @@ body[data-page=patient].calm-kiosk .hero-mic{height:min(100%,75vw,360px);width:a
 @media(max-width:450px){body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:250px;font-size:30px}}
 @media(max-width:450px){body[data-page=patient].calm-kiosk .talk-action h1#tap-title{max-width:260px;font-size:32px;text-wrap:balance}}
 body[data-page=patient].calm-kiosk[data-voice-state=speaking] .hero-mic{box-shadow:0 0 0 1px #d0e1d7,0 0 0 calc(6px + var(--voice-level)*12px) #43856b18,0 18px 34px #244d3924}
+
+/* A single circular Start/Stop control, with connection progress immediately below. */
+body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(110px,1fr) auto auto auto}
+body[data-page=patient].calm-kiosk .hero-mic{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1.5svh,16px);color:white}
+body[data-page=patient].calm-kiosk .hero-mic-icon{width:30%;height:30%;flex:none}
+.mic-action-label{font:800 clamp(22px,4svh,36px)/1.1 Manrope,sans-serif;letter-spacing:.3px;color:white}
+body[data-page=patient].calm-kiosk.conversation-active .hero-mic{background:linear-gradient(135deg,#eb9b57,#ca692b);box-shadow:0 0 0 1px #e3c8af,0 18px 34px #8f4b2226;cursor:pointer}
+body[data-page=patient].calm-kiosk.conversation-active .hero-mic::before,body[data-page=patient].calm-kiosk.conversation-active .hero-mic::after{border-color:#d7a47d}
+body[data-page=patient].calm-kiosk.conversation-active[data-voice-state=connecting] .hero-mic::before{border-color:transparent;border-top-color:#d18a52}
+body[data-page=patient].calm-kiosk.conversation-active[data-voice-state=speaking] .hero-mic{box-shadow:0 0 0 1px #e3c8af,0 0 0 calc(6px + var(--voice-level)*12px) #d0834826,0 18px 34px #8f4b2226}
+body[data-page=patient].calm-kiosk .voice-startup{min-height:3em;font-size:14px;line-height:1.4;max-width:650px;justify-self:center}
+@media(max-height:650px){body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(72px,1fr) auto auto auto;gap:5px}.mic-action-label{font-size:22px}body[data-page=patient].calm-kiosk .voice-startup{font-size:12px}}
+
+body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(150px,1fr) auto auto}
+.mic-control{height:100%;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px}
+body[data-page=patient].calm-kiosk .mic-control .hero-mic{height:min(calc(100% - 58px),75vw,360px);width:auto}
+body[data-page=patient].calm-kiosk .mic-control .voice-startup{flex:none;width:100%;min-height:3em}
+@media(max-height:650px){body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(120px,1fr) auto auto}.mic-control{gap:10px}}
