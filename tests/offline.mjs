@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {config} from '../config.js';
-import {CareStore,guessCategory,escapeHTML} from '../shared.js';
+import {CareStore,guessCategory,escapeHTML,staffRequestGroups} from '../shared.js';
 import {LiveCompanion} from '../voice.js';
 config.mode='demo';
 const memory=new Map();globalThis.localStorage={getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)};globalThis.window={addEventListener(){}};
@@ -116,3 +116,13 @@ assert.equal(playbackStates.at(-1),'Companion is speaking','Turn completion must
 [...playbackAvatar.sources][0].onended();assert.equal(playbackStates.at(-1),'Listening to you','Listening resumes after playback drains');
 playbackAvatar.stop();
 console.log('Passed: speaking state persists until queued playback ends.');
+
+// Missing or empty assignments must never turn into a collection-wide query.
+assert.deepEqual(staffRequestGroups({role:'staff'}),[]);
+assert.deepEqual(staffRequestGroups({assignedRoomUids:[]}),[]);
+assert.deepEqual(staffRequestGroups({assignedRoomUids:['room1','room1','bad/id',null]}),[['room1']]);
+const roomIds=Array.from({length:100},(_,i)=>'tablet'+i),groups=staffRequestGroups({assignedRoomUids:roomIds});
+assert.deepEqual(groups.map(g=>g.length),[30,30,30,10]);assert.deepEqual(groups.flat(),roomIds);
+const managed=new CareStore('patient');managed.demo=false;managed.profile={role:'room',room:'201'};
+await managed.changeRoom('201');await assert.rejects(managed.changeRoom('202'),/Master Admin/);
+console.log('Passed: empty assignment isolation, 100-room query grouping, duplicate removal and admin-only room reassignment.');

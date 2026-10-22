@@ -31,6 +31,11 @@ const SETTINGS_KEY='care-companion-tablet-settings-v1';
 const defaultSettings={ward:'Neuro Ward',patientName:'',uhid:'',language:'malayalam',display:'auto',nightStart:'18',nightEnd:'7',pin:'1234'};
 export function loadTabletSettings(){try{return {...defaultSettings,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')};}catch{return {...defaultSettings};}}
 export function saveTabletSettings(settings){const clean={...defaultSettings,...settings};localStorage.setItem(SETTINGS_KEY,JSON.stringify(clean));return clean;}
+// Firestore supports up to 30 disjunctions per query. Empty assignments issue no query.
+export function staffRequestGroups(profile){
+  const ids=[...new Set((Array.isArray(profile?.assignedRoomUids)?profile.assignedRoomUids:[]).filter(id=>typeof id==='string'&&id&&id.length<=128&&!id.includes('/')))];
+  return Array.from({length:Math.ceil(ids.length/30)},(_,i)=>ids.slice(i*30,(i+1)*30));
+}
 export class CareStore {
   constructor(page) {this.page=page;this.demo=config.mode==='demo';this.profile=null;this.items=[];this.listeners=[];this.unsubscribe=null;this.profileUnsubscribe=null;this.authEpoch=0;this.context={};}
   setContext(context){this.context={...this.context,...context};}
@@ -60,21 +65,32 @@ export class CareStore {
           if(profile.role!==required)throw Error(`This page requires a ${required} account.`);
           if(required==='room'&&(!profile.room||typeof profile.room!=='string'))throw Error('The account needs a valid room assignment.');
           this.profile={...profile,uid:user.uid};
+          let requestVersion=0;
           const subscribeRequests=()=>{
-            this.unsubscribe?.();this.items=[];this.emit();
-            const ref=db.collection(this.db,'requests');const q=required==='room'?db.query(ref,db.where('ownerUid','==',user.uid),db.where('room','==',this.profile.room)):db.query(ref);
-            this.unsubscribe=db.onSnapshot(q,snapshot=>{if(epoch!==this.authEpoch)return;this.items=snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),updatedAt:d.data().updatedAt?.toMillis?.()||Date.now(),acknowledgedAt:d.data().acknowledgedAt?.toMillis?.()||null,completedAt:d.data().completedAt?.toMillis?.()||null})).sort((a,b)=>b.createdAt-a.createdAt);this.emit();},error=>{if(epoch===this.authEpoch)this.onState(this.profile,error);});
+            const version=++requestVersion;this.unsubscribe?.();this.items=[];this.emit();
+            const ref=db.collection(this.db,'requests');
+            const queries=required==='room'?[db.query(ref,db.where('ownerUid','==',user.uid),db.where('room','==',this.profile.room))]:staffRequestGroups(this.profile).map(ids=>db.query(ref,db.where('ownerUid','in',ids)));
+            const results=new Map(),unsubscribers=[];
+            this.unsubscribe=()=>unsubscribers.forEach(unsubscribe=>unsubscribe());
+            const publish=()=>{this.items=[...results.values()].flat().sort((a,b)=>b.createdAt-a.createdAt);this.emit();};
+            for(const [index,q]of queries.entries())unsubscribers.push(db.onSnapshot(q,snapshot=>{
+              if(epoch!==this.authEpoch||version!==requestVersion)return;
+              results.set(index,snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),updatedAt:d.data().updatedAt?.toMillis?.()||Date.now(),acknowledgedAt:d.data().acknowledgedAt?.toMillis?.()||null,completedAt:d.data().completedAt?.toMillis?.()||null})));publish();
+            },error=>{
+              if(epoch!==this.authEpoch||version!==requestVersion)return;
+              ++requestVersion;this.unsubscribe?.();this.items=[];this.emit();this.onState(this.profile,error);
+            }));
           };
           subscribeRequests();
           this.profileUnsubscribe=db.onSnapshot(db.doc(this.db,'profiles',user.uid),snapshot=>{
             if(epoch!==this.authEpoch)return;
             const next=snapshot.exists()?snapshot.data():null;
             if(!next||next.disabled===true||next.role!==required||(required==='room'&&!next.room)){
-              this.unsubscribe?.();this.profile=null;this.items=[];this.emit();
+              ++requestVersion;this.unsubscribe?.();this.profile=null;this.items=[];this.emit();
               this.onState(null,Error('Your account access changed. Please contact Master Admin.'));
               auth.signOut(this.auth).catch(()=>{});return;
             }
-            if(this.profile?.room!==next.room){this.profile={...next,uid:user.uid};this.onState(this.profile);subscribeRequests();}
+            if(this.profile?.room!==next.room||JSON.stringify(this.profile?.assignedRoomUids||[])!==JSON.stringify(next.assignedRoomUids||[])){this.profile={...next,uid:user.uid};this.onState(this.profile);subscribeRequests();}
           },error=>{if(epoch===this.authEpoch)this.onState(this.profile,error);});
         }
         this.onState(this.profile);
@@ -138,7 +154,7 @@ export function setupAccount(store,onProfile) {
       $('login-help').textContent=signedIn?(settingsUnlocked?'Room assignment is managed by Master Admin. Tablet settings and sign out are available here.':'Enter the PIN to manage tablet settings or sign out.'):'Sign in once on this device. The room opens automatically after that.';
       return;
     }
-    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit){submit.hidden=signedIn;submit.textContent='Sign in';}if($('logout'))$('logout').hidden=!signedIn;$('login-help').textContent=signedIn?'You are signed in to this station.':'Sign in once on this device. The session stays signed in until staff sign out.';}
+    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit){submit.hidden=signedIn;submit.textContent='Sign in';}if($('logout'))$('logout').hidden=!signedIn;$('login-help').textContent=signedIn?`You are signed in. ${staffRequestGroups(store.profile).flat().length} room/tablet accounts assigned. Master Admin manages these assignments.`:'Sign in once on this device. The session stays signed in until staff sign out.';}
     else if(submit)submit.textContent=store.page==='patient'?'Save room':'Close';
   };
   $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>((store.page==='patient'&&store.profile)?$('settings-pin'):$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();

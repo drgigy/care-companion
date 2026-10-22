@@ -30,15 +30,15 @@ export function createAdminHandler({db,auth,allowedOrigins}){
       return {uid,user,profile};
     };
     try{
-      if(action==='list'){
+      if(action==='list'||action==='listRooms'){
         if(data.pageToken!==undefined&&(typeof data.pageToken!=='string'||data.pageToken.length>2048))fail('invalid-argument','Invalid page token.');
         const result=await auth.listUsers(50,data.pageToken||undefined);
         const profiles=result.users.length?await db.getAll(...result.users.map(u=>db.doc(`profiles/${u.uid}`))):[];
         const admins=result.users.length?await db.getAll(...result.users.map(u=>db.doc(`adminAccess/${u.uid}`))):[];
         return {actor:{uid:actor.uid,email:actor.email},users:result.users.map((u,i)=>{
           const p=profiles[i].exists?profiles[i].data():{};
-          return {uid:u.uid,email:u.email||'',name:u.displayName||p.name||'',role:p.role||'unassigned',room:p.room||'',disabled:!!u.disabled||p.disabled===true,protected:u.uid===actor.uid||(admins[i].exists&&admins[i].data().enabled===true)||!!u.customClaims?.masterAdmin||!!u.customClaims?.admin||!!(p.role&&!['room','staff'].includes(p.role)),lastSignIn:u.metadata.lastSignInTime||null};
-        }),nextPageToken:result.pageToken||null};
+          return {uid:u.uid,email:u.email||'',name:u.displayName||p.name||'',role:p.role||'unassigned',room:p.room||'',disabled:!!u.disabled||p.disabled===true,assignedRoomUids:Array.isArray(p.assignedRoomUids)?p.assignedRoomUids:[],protected:u.uid===actor.uid||(admins[i].exists&&admins[i].data().enabled===true)||!!u.customClaims?.masterAdmin||!!u.customClaims?.admin||!!(p.role&&!['room','staff'].includes(p.role)),lastSignIn:u.metadata.lastSignInTime||null};
+        }).filter(u=>action!=='listRooms'||u.role==='room'),nextPageToken:result.pageToken||null};
       }
       if(action==='create'){
         const input=accountInput(data);
@@ -55,7 +55,7 @@ export function createAdminHandler({db,auth,allowedOrigins}){
         await auth.createUser({uid,email:input.email,displayName:input.name,password:randomBytes(32).toString('base64url'),disabled:true});
         try{
           const batch=db.batch();
-          batch.create(db.doc(`profiles/${uid}`),{...input,disabled:false,createdBy:actor.uid,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+          batch.create(db.doc(`profiles/${uid}`),{...input,assignedRoomUids:[],disabled:false,createdBy:actor.uid,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
           batch.set(db.collection('adminAudit').doc(),{actorUid:actor.uid,targetUid:uid,action:'create',role:input.role,room:input.room,createdAt:FieldValue.serverTimestamp()});
           await batch.commit();
           await auth.updateUser(uid,{disabled:false});
@@ -68,10 +68,24 @@ export function createAdminHandler({db,auth,allowedOrigins}){
       }
       if(action==='update'){
         const target=await targetUser();const input=accountInput({...data,email:target.user.email});
-        await db.doc(`profiles/${target.uid}`).set({name:input.name,role:input.role,room:input.room,disabled:!!target.user.disabled,updatedAt:FieldValue.serverTimestamp(),updatedBy:actor.uid},{merge:true});
+        await db.doc(`profiles/${target.uid}`).set({name:input.name,role:input.role,room:input.room,...(input.role==='staff'&&target.profile.data()?.role==='staff'?{}:{assignedRoomUids:[]}),disabled:!!target.user.disabled,updatedAt:FieldValue.serverTimestamp(),updatedBy:actor.uid},{merge:true});
         await auth.updateUser(target.uid,{displayName:input.name});
         await audit(target.uid,{role:input.role,room:input.room});
         return {uid:target.uid};
+      }
+      if(action==='assignRooms'){
+        const target=await targetUser();
+        if(!target.profile.exists||target.profile.data().role!=='staff')fail('failed-precondition','Room/tablet assignments are available for staff accounts only.');
+        const ids=data.assignedRoomUids;
+        if(!Array.isArray(ids)||ids.length>100||ids.some(id=>typeof id!=='string'||!id||id.length>128||id.includes('/')||id.trim()!==id)||new Set(ids).size!==ids.length)fail('invalid-argument','Select up to 100 different room/tablet accounts.');
+        if(ids.length){
+          const [profiles,logins]=await Promise.all([db.getAll(...ids.map(id=>db.doc(`profiles/${id}`))),auth.getUsers(ids.map(uid=>({uid})))]);
+          if(profiles.some(p=>!p.exists||p.data().role!=='room')||logins.notFound.length)fail('failed-precondition','A selected room/tablet account is no longer available. Reload the list.');
+        }
+        const assignedRoomUids=[...ids].sort(),batch=db.batch();
+        batch.set(db.doc(`profiles/${target.uid}`),{assignedRoomUids,updatedAt:FieldValue.serverTimestamp(),updatedBy:actor.uid},{merge:true});
+        batch.set(db.collection('adminAudit').doc(),{actorUid:actor.uid,targetUid:target.uid,action,assignedRoomUids,createdAt:FieldValue.serverTimestamp()});
+        await batch.commit();return {uid:target.uid,assignedRoomUids};
       }
       if(action==='setDisabled'){
         if(typeof data.disabled!=='boolean')fail('invalid-argument','Choose enable or disable.');

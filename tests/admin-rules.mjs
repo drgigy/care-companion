@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 const project='demo-aster-admin',root=`http://127.0.0.1:8088/v1/projects/${project}/databases/(default)/documents`;
 const token=uid=>[Buffer.from(JSON.stringify({alg:'none',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({iss:`https://securetoken.google.com/${project}`,aud:project,sub:uid,user_id:uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600,firebase:{sign_in_provider:'password'}})).toString('base64url'),''].join('.');
-const field=x=>x===null?{nullValue:null}:typeof x==='boolean'?{booleanValue:x}:typeof x==='number'?{integerValue:String(x)}:{stringValue:x};
+const field=x=>Array.isArray(x)?{arrayValue:{values:x.map(field)}}:x===null?{nullValue:null}:typeof x==='boolean'?{booleanValue:x}:typeof x==='number'?{integerValue:String(x)}:{stringValue:x};
 const fields=o=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,field(v)]));
 async function call(path,{uid='owner',method='GET',body}={}){const r=await fetch(root+path,{method,headers:{Authorization:'Bearer '+(uid==='owner'?'owner':token(uid)),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const text=await r.text();return {status:r.status,text};}
 async function seed(path,data){const r=await call('/'+path,{method:'PATCH',body:{fields:fields(data)}});assert.equal(r.status,200,r.text);}
 async function read(path,uid,allowed){const r=await call('/'+path,{uid});assert.equal(r.status,allowed?200:403,r.text);}
-await seed('profiles/room',{role:'room',room:'201'});await seed('profiles/staff',{role:'staff'});await seed('profiles/disabled',{role:'staff',disabled:true});await seed('requests/a',{ownerUid:'room',room:'201',status:'new',summary:'Water',category:'food'});await seed('adminAccess/staff',{enabled:true});
+await seed('profiles/room',{role:'room',room:'201'});await seed('profiles/staff',{role:'staff',assignedRoomUids:['room']});await seed('profiles/disabled',{role:'staff',disabled:true,assignedRoomUids:['room']});await seed('requests/a',{ownerUid:'room',room:'201',status:'new',summary:'Water',category:'food'});await seed('adminAccess/staff',{enabled:true});
 await read('requests/a','room',true);await read('requests/a','staff',true);await read('requests/a','disabled',false);await read('requests/a','other',false);await read('adminAccess/staff','staff',false);
 for(const path of ['profiles/room','adminAccess/room']){const r=await call('/'+path,{uid:'room',method:'PATCH',body:{fields:fields({role:'staff',room:'999',enabled:true})}});assert.equal(r.status,403,r.text);}
 async function query(uid,room){const filters=[{fieldFilter:{field:{fieldPath:'ownerUid'},op:'EQUAL',value:{stringValue:uid}}}];if(room)filters.push({fieldFilter:{field:{fieldPath:'room'},op:'EQUAL',value:{stringValue:room}}});return call(':runQuery',{uid,method:'POST',body:{structuredQuery:{from:[{collectionId:'requests'}],where:filters.length===1?filters[0]:{compositeFilter:{op:'AND',filters}}}}});}
@@ -21,3 +21,19 @@ r=await commit('disabled','requests/b',{status:'in-progress',acknowledgedByEmplo
 r=await commit('staff','requests/b',{status:'in-progress',acknowledgedByEmployeeId:'EMP1'});assert.equal(r.status,200,r.text);
 r=await commit('room','requests/b',{status:'completed',completedByName:'Staff',completedByEmployeeId:'EMP1'});assert.equal(r.status,200,r.text);
 console.log('Passed emulator: legacy enabled profiles, owner/room queries, reassignment privacy, disabled access, protected admin records, forbidden client role/room edits, request creation, staff acknowledgement and bedside completion.');
+
+await seed('profiles/legacy-staff',{role:'staff'});await read('requests/a','legacy-staff',false);
+await seed('profiles/unassigned-staff',{role:'staff',assignedRoomUids:[]});await read('requests/a','unassigned-staff',false);
+await seed('requests/other-room',{ownerUid:'other-tablet',room:'999',status:'new',completedAt:null});
+await read('requests/other-room','staff',false);
+r=await commit('staff','requests/other-room',{status:'in-progress',acknowledgedByEmployeeId:'EMP1'});assert.equal(r.status,403,r.text);
+async function staffQuery(owners){return call(':runQuery',{uid:'staff',method:'POST',body:{structuredQuery:{from:[{collectionId:'requests'}],...(owners?{where:{fieldFilter:{field:{fieldPath:'ownerUid'},op:'IN',value:field(owners)}}}:{})}}});}
+assert.equal((await staffQuery(['room'])).status,200,'assigned staff query works');
+assert.equal((await staffQuery(['room','other-tablet'])).status,403,'cross-room query rejected');
+assert.equal((await staffQuery()).status,403,'collection-wide queries rejected');
+const assignedIds=Array.from({length:100},(_,i)=>'tablet'+i);
+await seed('profiles/staff',{role:'staff',assignedRoomUids:assignedIds});
+for(let i=0;i<100;i+=30){r=await staffQuery(assignedIds.slice(i,i+30));assert.equal(r.status,200,r.text);}
+await seed('profiles/staff',{role:'staff',assignedRoomUids:[]});await read('requests/a','staff',false);
+r=await call('/profiles/staff',{uid:'staff',method:'PATCH',body:{fields:fields({role:'staff',assignedRoomUids:['room']})}});assert.equal(r.status,403,'staff cannot assign themselves rooms');
+console.log('Passed emulator: staff see and accept only assigned tablet requests, no implicit access for legacy/empty assignments, scoped IN queries through 100 assignments, assignment removal and self-assignment denial.');
