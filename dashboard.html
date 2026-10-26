@@ -25,7 +25,7 @@
   <section class="staff-board">
     <div class="staff-board-head">
       <div><h1 id="queue-title">All departments</h1><p id="queue-summary">Updates automatically</p></div>
-      <div class="filters"><button id="active-filter" class="secondary selected">Active</button><button id="completed-filter" class="secondary">Completed</button><button id="sound" class="secondary" aria-pressed="false">Alert sound: off</button></div>
+      <div class="filters"><button id="active-filter" class="secondary selected">Active</button><button id="completed-filter" class="secondary">Completed</button><button id="sound" title="Ring for 3 seconds every 20 seconds while requests wait to be accepted. Keep this dashboard open." class="secondary" aria-pressed="false">Alert sound: off</button></div>
     </div>
     <div class="staff-table" id="request-list" aria-live="polite"></div>
   </section>
@@ -46,6 +46,6 @@
 <select id="status-filter" hidden><option value="active">Active</option></select>
 <p id="dashboard-footnote" hidden></p>
 <div class="toast" id="toast" role="status" hidden></div>
-<script type="module" src="dashboard.js?v=assignments-20261022"></script>
+<script type="module" src="dashboard.js?v=ring-20261026"></script>
 </body>
 </html>

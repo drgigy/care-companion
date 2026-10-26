@@ -22,7 +22,7 @@ jobs:
       - name: Collect public frontend files
         run: |
           mkdir public
-          cp master-admin.html master-admin.css master-admin.js admin-client.js index.html dashboard.html log.html styles.css config.js shared.js patient.js dashboard.js log.js voice.js mic-worklet.js public/
+          cp master-admin.html master-admin.css master-admin.js admin-client.js index.html dashboard.html log.html styles.css config.js shared.js patient.js dashboard.js request-alert.js log.js voice.js mic-worklet.js public/
           cp -R assets public/
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,5 +1,6 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js?v=assignments-20261022';
-const store=new CareStore('dashboard');let selected='all',view='active',items=[],seen=new Set(),loaded=false,sound=false,audio=null,ackId=null;
+import {RequestAlert} from './request-alert.js?v=ring-20261026';
+const store=new CareStore('dashboard');let selected='all',view='active',items=[],seen=new Set(),loaded=false,ackId=null;
 function setSidebarCollapsed(value){
   document.body.classList.toggle('sidebar-collapsed',value);
   localStorage.setItem('dashboardSidebarCollapsed',value?'1':'0');
@@ -12,8 +13,32 @@ setSidebarCollapsed(localStorage.getItem('dashboardSidebarCollapsed')==='1');
 $('sidebar-toggle').onclick=()=>setSidebarCollapsed(!document.body.classList.contains('sidebar-collapsed'));
 const age=time=>{const mins=Math.max(0,Math.floor((Date.now()-time)/60000));return mins===0?'just now':mins<60?`${mins} min`:mins<1440?`${Math.floor(mins/60)} hr ${mins%60} min`:`${Math.floor(mins/1440)} d`;};
 function clock(){const target=$('clock');if(target)target.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}clock();setInterval(clock,30000);
-function chime(){if(!audio)return;const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.connect(gain);gain.connect(audio.destination);oscillator.frequency.value=650;gain.gain.setValueAtTime(.08,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.6);oscillator.start();oscillator.stop(audio.currentTime+.6);}
-$('sound').onclick=async()=>{try{if(!audio)audio=new AudioContext();await audio.resume();sound=!sound;$('sound').textContent=sound?'Alert sound: on':'Alert sound: off';$('sound').setAttribute('aria-pressed',String(sound));if(sound)chime();}catch{toast('Audio alerts are unavailable.');}};
+const requestAlert=new RequestAlert({onState:()=>{
+  $('sound').textContent=requestAlert.enabled?(requestAlert.ready?'Alert sound: on':'Alert sound: paused · tap to resume'):'Alert sound: off';
+  $('sound').setAttribute('aria-pressed',String(requestAlert.enabled));
+}});
+let alertWakeLock=null,wakeLockVersion=0;
+async function syncAlertWakeLock(){
+  const version=++wakeLockVersion;
+  if(!requestAlert.enabled||document.hidden){const lock=alertWakeLock;alertWakeLock=null;await lock?.release().catch(()=>{});return;}
+  if(alertWakeLock||!navigator.wakeLock)return;
+  try{
+    const lock=await navigator.wakeLock.request('screen');
+    if(version!==wakeLockVersion||!requestAlert.enabled||document.hidden){await lock.release();return;}
+    alertWakeLock=lock;lock.addEventListener('release',()=>{if(alertWakeLock===lock)alertWakeLock=null;});
+  }catch{/* Audio still works when screen wake lock is unavailable. */}
+}
+$('sound').onclick=async()=>{
+  try{await requestAlert.setEnabled(!requestAlert.enabled||!requestAlert.ready);}
+  catch{toast('Audio could not start. Tap Alert sound again and check the device volume.');}
+  await syncAlertWakeLock();
+};
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)syncAlertWakeLock();
+  else requestAlert.resume().catch(()=>toast('Tap Alert sound to resume audio.')).finally(syncAlertWakeLock);
+});
+window.addEventListener('pagehide',()=>{requestAlert.setEnabled(false);syncAlertWakeLock();});
+
 function todayStart(){const today=new Date();today.setHours(0,0,0,0);return today.getTime();}
 function ackTime(row){return row.acknowledgedAt||(row.status!=='new'?row.updatedAt:null);}
 function avgResponse(){const rows=items.filter(r=>ackTime(r));if(!rows.length)return '—';const mins=Math.round(rows.reduce((sum,row)=>sum+Math.max(0,ackTime(row)-row.createdAt),0)/rows.length/60000);return `${mins} min`;}
@@ -35,6 +60,6 @@ function openAck(id){ackId=id;$('ack-error').textContent='';$('ack-employee-id')
 function renderAckList(){const rows=items.filter(r=>r.status==='new');if(!rows.some(r=>r.id===ackId))ackId=rows[0]?.id||null;$('ack-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-ack-id="${escapeHTML(r.id)}" class="${r.id===ackId?'selected':''}"><strong>${escapeHTML(categoryLabel(r.category))} · Room ${escapeHTML(r.room)}</strong><span>${escapeHTML(r.summary)} · ${age(r.createdAt)} ago</span></button>`).join(''):'<p>No new requests are waiting for acknowledgement.</p>';$('ack-request-list').querySelectorAll('[data-ack-id]').forEach(button=>button.onclick=()=>{ackId=button.dataset.ackId;renderAckList();});$('ack-save').disabled=!ackId;}
 $('ack-close').onclick=()=>$('ack-dialog').close();$('ack-form').onsubmit=async e=>{e.preventDefault();$('ack-error').textContent='';const submit=$('ack-save');submit.disabled=true;try{if(!ackId)throw Error('Select a request first.');await store.update(ackId,'in-progress',$('ack-employee-id').value);toast('Request accepted');$('ack-dialog').close();}catch(error){$('ack-error').textContent=error.message;}finally{submit.disabled=false;renderAckList();}};
 $('active-filter').onclick=()=>{view='active';$('active-filter').classList.add('selected');$('completed-filter').classList.remove('selected');render();};$('completed-filter').onclick=()=>{view='completed';$('completed-filter').classList.add('selected');$('active-filter').classList.remove('selected');render();};
-store.subscribe(rows=>{const arrivals=rows.filter(r=>!seen.has(r.id)&&r.status==='new');if(loaded&&arrivals.length){const first=arrivals[0];toast(`New request · Room ${first.room} · ${categoryLabel(first.category)}`);if(sound)chime();}seen=new Set(rows.map(r=>r.id));loaded=true;items=rows;render();if($('ack-dialog').open)renderAckList();});setInterval(render,30000);
-const initialize=setupAccount(store,(profile,error)=>{if(error)toast('Live updates are interrupted. Check your connection and account access.');if(!profile){items=[];loaded=false;render();}});
+store.subscribe(rows=>{const arrivals=rows.filter(r=>!seen.has(r.id)&&r.status==='new');if(loaded&&arrivals.length){const first=arrivals[0];toast(`New request · Room ${first.room} · ${categoryLabel(first.category)}`);}seen=new Set(rows.map(r=>r.id));loaded=true;items=rows;requestAlert.setRequests(rows);render();if($('ack-dialog').open)renderAckList();});setInterval(render,30000);
+const initialize=setupAccount(store,(profile,error)=>{if(error)toast('Live updates are interrupted. Check your connection and account access.');if(!profile){items=[];loaded=false;requestAlert.setRequests([]);render();}});
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';});
