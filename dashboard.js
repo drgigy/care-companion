@@ -1,6 +1,8 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js?v=assignments-20261022';
 import {RequestAlert} from './request-alert.js?v=ring-20261026';
-const store=new CareStore('dashboard');let selected='all',view='active',items=[],seen=new Set(),loaded=false,ackId=null;
+import {categoryPages,dashboardCategory,scopeRequests} from './dashboard-scope.js?v=categories-20261027';
+const fixedCategory=dashboardCategory(document.body.dataset.category);
+const store=new CareStore('dashboard');let selected=fixedCategory||'all',view='active',items=[],seen=new Set(),loaded=false,ackId=null;
 function setSidebarCollapsed(value){
   document.body.classList.toggle('sidebar-collapsed',value);
   localStorage.setItem('dashboardSidebarCollapsed',value?'1':'0');
@@ -43,7 +45,12 @@ function todayStart(){const today=new Date();today.setHours(0,0,0,0);return toda
 function ackTime(row){return row.acknowledgedAt||(row.status!=='new'?row.updatedAt:null);}
 function avgResponse(){const rows=items.filter(r=>ackTime(r));if(!rows.length)return '—';const mins=Math.round(rows.reduce((sum,row)=>sum+Math.max(0,ackTime(row)-row.createdAt),0)/rows.length/60000);return `${mins} min`;}
 function departmentRows(){return items.filter(r=>(selected==='all'||r.category===selected)&&(view==='completed'?r.status==='completed':r.status!=='completed')).sort((a,b)=>{const order={new:0,'in-progress':1,completed:2};return order[a.status]-order[b.status]||a.createdAt-b.createdAt;});}
+const dashboardSelect=$('dashboard-select');
+dashboardSelect.innerHTML='<option value="dashboard.html">All departments</option>'+Object.entries(categoryPages).map(([key,path])=>`<option value="${escapeHTML(path)}">${escapeHTML(categories[key].label)}</option>`).join('');
+dashboardSelect.value=fixedCategory?categoryPages[fixedCategory]:'dashboard.html';
+dashboardSelect.onchange=()=>{window.location.href=dashboardSelect.value;};
 function renderTabs(){
+  if(fixedCategory){$('category-tabs').innerHTML=`<button class="selected" aria-current="page"><span>${escapeHTML(categories[fixedCategory].label)}</span><b>${items.filter(r=>r.status!=='completed').length}</b></button>`;return;}
   const active=items.filter(r=>r.status!=='completed');
   const allCount=active.length;
   $('category-tabs').innerHTML=`<button data-category="all" class="${selected==='all'?'selected':''}"><span>All departments</span><b>${allCount}</b></button>`+Object.entries(categories).map(([key,value])=>`<button data-category="${key}" class="${selected===key?'selected':''}${items.some(r=>r.category===key&&r.status==='new')?' has-new':''}"><span>${escapeHTML(value.label)}</span><b>${active.filter(r=>r.category===key).length}</b></button>`).join('');
@@ -60,6 +67,6 @@ function openAck(id){ackId=id;$('ack-error').textContent='';$('ack-employee-id')
 function renderAckList(){const rows=items.filter(r=>r.status==='new');if(!rows.some(r=>r.id===ackId))ackId=rows[0]?.id||null;$('ack-request-list').innerHTML=rows.length?rows.map(r=>`<button type="button" data-ack-id="${escapeHTML(r.id)}" class="${r.id===ackId?'selected':''}"><strong>${escapeHTML(categoryLabel(r.category))} · Room ${escapeHTML(r.room)}</strong><span>${escapeHTML(r.summary)} · ${age(r.createdAt)} ago</span></button>`).join(''):'<p>No new requests are waiting for acknowledgement.</p>';$('ack-request-list').querySelectorAll('[data-ack-id]').forEach(button=>button.onclick=()=>{ackId=button.dataset.ackId;renderAckList();});$('ack-save').disabled=!ackId;}
 $('ack-close').onclick=()=>$('ack-dialog').close();$('ack-form').onsubmit=async e=>{e.preventDefault();$('ack-error').textContent='';const submit=$('ack-save');submit.disabled=true;try{if(!ackId)throw Error('Select a request first.');await store.update(ackId,'in-progress',$('ack-employee-id').value);toast('Request accepted');$('ack-dialog').close();}catch(error){$('ack-error').textContent=error.message;}finally{submit.disabled=false;renderAckList();}};
 $('active-filter').onclick=()=>{view='active';$('active-filter').classList.add('selected');$('completed-filter').classList.remove('selected');render();};$('completed-filter').onclick=()=>{view='completed';$('completed-filter').classList.add('selected');$('active-filter').classList.remove('selected');render();};
-store.subscribe(rows=>{const arrivals=rows.filter(r=>!seen.has(r.id)&&r.status==='new');if(loaded&&arrivals.length){const first=arrivals[0];toast(`New request · Room ${first.room} · ${categoryLabel(first.category)}`);}seen=new Set(rows.map(r=>r.id));loaded=true;items=rows;requestAlert.setRequests(rows);render();if($('ack-dialog').open)renderAckList();});setInterval(render,30000);
+store.subscribe(allRows=>{const rows=scopeRequests(allRows,fixedCategory);const arrivals=rows.filter(r=>!seen.has(r.id)&&r.status==='new');if(loaded&&arrivals.length){const first=arrivals[0];toast(`New request · Room ${first.room} · ${categoryLabel(first.category)}`);}seen=new Set(rows.map(r=>r.id));loaded=true;items=rows;requestAlert.setRequests(rows);render();if($('ack-dialog').open)renderAckList();});setInterval(render,30000);
 const initialize=setupAccount(store,(profile,error)=>{if(error)toast('Live updates are interrupted. Check your connection and account access.');if(!profile){items=[];loaded=false;requestAlert.setRequests([]);render();}});
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';});

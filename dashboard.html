@@ -20,6 +20,8 @@
 <main class="staff-layout">
   <aside class="department-sidebar">
     <div class="sidebar-head"><div class="eyebrow">DEPARTMENTS</div><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-expanded="true" aria-label="Collapse departments">‹</button></div>
+    <div class="dashboard-picker"><label for="dashboard-select">Open dashboard</label>
+    <select id="dashboard-select" style="width:100%;margin:8px 0 18px;padding:10px;border:1px solid #dde4dd;border-radius:8px;background:white;color:#233b38" aria-label="Open dashboard"></select></div>
     <nav id="category-tabs" aria-label="Departments"></nav>
   </aside>
   <section class="staff-board">
@@ -46,6 +48,6 @@
 <select id="status-filter" hidden><option value="active">Active</option></select>
 <p id="dashboard-footnote" hidden></p>
 <div class="toast" id="toast" role="status" hidden></div>
-<script type="module" src="dashboard.js?v=ring-20261026"></script>
+<script type="module" src="dashboard.js?v=categories-20261027"></script>
 </body>
 </html>

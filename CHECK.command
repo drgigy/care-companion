@@ -8,4 +8,5 @@ done
 node tests/offline.mjs
 node tests/admin.mjs
 node tests/request-alert.mjs
+node tests/dashboard-scope.mjs
 echo "Syntax and offline checks passed. Live services still need acceptance testing."

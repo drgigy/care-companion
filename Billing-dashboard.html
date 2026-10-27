@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aster Care companion · IP billing dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="dashboard" data-category="ipBilling">
+<header class="staff-topbar">
+  <div class="brand" aria-label="Aster Care companion"><span class="brand-stack"><span>Aster Care Companion</span><small>Powered by WOYZ</small></span><span class="brand-divider"></span><small>IP billing</small></div>
+  <div class="staff-actions"><span id="clock">--:--</span><a class="text-button" href="log.html">Request log</a><a class="text-button" href="master-admin.html">Master Admin</a><button class="text-button" id="account">Staff account</button></div>
+</header>
+<section class="staff-metrics" aria-label="Daily request summary">
+  <div><small>New</small><strong id="new-count">0</strong><span>Waiting to be accepted</span></div>
+  <div><small>In progress</small><strong id="progress-count">0</strong><span>Staff on the way</span></div>
+  <div><small>Completed today</small><strong id="done-count">0</strong><span>Closed requests</span></div>
+  <div><small>Avg. response</small><strong id="avg-response">—</strong><span>Request to accept</span></div>
+</section>
+<main class="staff-layout">
+  <aside class="department-sidebar">
+    <div class="sidebar-head"><div class="eyebrow">DEPARTMENTS</div><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-expanded="true" aria-label="Collapse departments">‹</button></div>
+    <div class="dashboard-picker"><label for="dashboard-select">Open dashboard</label>
+    <select id="dashboard-select" style="width:100%;margin:8px 0 18px;padding:10px;border:1px solid #dde4dd;border-radius:8px;background:white;color:#233b38" aria-label="Open dashboard"></select></div>
+    <nav id="category-tabs" aria-label="Departments"></nav>
+  </aside>
+  <section class="staff-board">
+    <div class="staff-board-head">
+      <div><h1 id="queue-title">IP billing</h1><p id="queue-summary">Updates automatically</p></div>
+      <div class="filters"><button id="active-filter" class="secondary selected">Active</button><button id="completed-filter" class="secondary">Completed</button><button id="sound" title="Ring for 3 seconds every 20 seconds while requests wait to be accepted. Keep this dashboard open." class="secondary" aria-pressed="false">Alert sound: off</button></div>
+    </div>
+    <div class="staff-table" id="request-list" aria-live="polite"></div>
+  </section>
+</main>
+<dialog id="ack-dialog">
+  <form id="ack-form">
+    <div class="eyebrow">ACCEPT REQUEST</div>
+    <h2>Save acknowledgement</h2>
+    <p>Select the request and enter your employee ID.</p>
+    <div class="staff-request-list" id="ack-request-list"></div>
+    <label>Employee ID<input id="ack-employee-id" autocomplete="off" required></label>
+    <p class="error" id="ack-error" role="alert"></p>
+    <div class="dialog-actions"><button class="secondary" id="ack-close" type="button">Close</button><button class="primary" id="ack-save">Save acknowledgement</button></div>
+  </form>
+</dialog>
+<dialog id="login-dialog"><form id="login-form"><div class="eyebrow">STAFF ACCESS</div><h2>Sign in to your station</h2><p id="login-help">In local demo mode, requests are shared only within this browser. No staff sign-in is needed.</p><div id="live-login" hidden><label>Email<input id="email" type="email" autocomplete="username"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label></div><p class="error" id="login-error" role="alert"></p><div class="dialog-actions"><button class="primary" id="login-submit" hidden>Sign in</button><button class="secondary" id="close-login" type="button">Close</button><button class="text-button" id="logout" type="button" hidden>Sign out</button></div></form></dialog>
+<span class="connection" id="connection" hidden>Local demo</span>
+<select id="status-filter" hidden><option value="active">Active</option></select>
+<p id="dashboard-footnote" hidden></p>
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module" src="dashboard.js?v=categories-20261027"></script>
+</body>
+</html>

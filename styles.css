@@ -504,3 +504,5 @@ body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(150px,1
 body[data-page=patient].calm-kiosk .mic-control .hero-mic{height:min(calc(100% - 58px),75vw,360px);width:auto}
 body[data-page=patient].calm-kiosk .mic-control .voice-startup{flex:none;width:100%;min-height:3em}
 @media(max-height:650px){body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(120px,1fr) auto auto}.mic-control{gap:10px}}
+
+@media(min-width:761px){.sidebar-collapsed .dashboard-picker{display:none}}
