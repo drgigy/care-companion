@@ -20,9 +20,9 @@ export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInsta
   const liveConfig={
     responseModalities:['AUDIO'],
     speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:liveVoice}}},
-    // Require more sustained speech before interrupting in a shared hospital room.
+    // Finish short replies even when TV or nearby speech triggers activity detection.
     realtimeInputConfig:{
-      activityHandling:'START_OF_ACTIVITY_INTERRUPTS',
+      activityHandling:'NO_INTERRUPTION',
       automaticActivityDetection:{
         disabled:false,
         startOfSpeechSensitivity:'START_SENSITIVITY_LOW',
