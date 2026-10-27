@@ -17,7 +17,24 @@ export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInsta
   if(!origin||!origins.value().split(',').map(s=>s.trim()).includes(origin))throw new HttpsError('permission-denied','This frontend origin is not allowed.');
   const uid=request.auth.uid;const profile=await db.doc(`profiles/${uid}`).get();
   if(!profile.exists||profile.data().role!=='room'||profile.data().disabled===true||!profile.data().room)throw new HttpsError('permission-denied','A configured room account is required.');
-  const liveConfig={responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:liveVoice}}},inputAudioTranscription:{},outputAudioTranscription:{},systemInstruction:conversationScript,tools:[{functionDeclarations:[requestTool,endConversationTool]}]};
+  const liveConfig={
+    responseModalities:['AUDIO'],
+    speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:liveVoice}}},
+    // Require more sustained speech before interrupting in a shared hospital room.
+    realtimeInputConfig:{
+      activityHandling:'START_OF_ACTIVITY_INTERRUPTS',
+      automaticActivityDetection:{
+        disabled:false,
+        startOfSpeechSensitivity:'START_SENSITIVITY_LOW',
+        endOfSpeechSensitivity:'END_SENSITIVITY_LOW',
+        prefixPaddingMs:200,
+        silenceDurationMs:700
+      }
+    },
+    inputAudioTranscription:{},outputAudioTranscription:{},
+    systemInstruction:conversationScript,
+    tools:[{functionDeclarations:[requestTool,endConversationTool]}]
+  };
   try{
     const ai=new GoogleGenAI({apiKey:geminiKey.value(),httpOptions:{apiVersion:'v1beta'}});
     const token=await ai.authTokens.create({config:{uses:1,expireTime:new Date(Date.now()+10*60000).toISOString(),newSessionExpireTime:new Date(Date.now()+60000).toISOString(),liveConnectConstraints:{model:liveModel,config:liveConfig}}});
