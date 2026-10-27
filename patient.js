@@ -1,6 +1,7 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js?v=assignments-20261022';
+import {PatientNotification} from './patient-notification.js?v=recording-20261027';
 import {LiveCompanion} from './voice.js?v=mic-20261019';
-const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings(),notificationAudio=null;
+const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings();
 const langText={
   auto:{sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
   english:{sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the Nurse Call button.',requests:'Your requests'},
@@ -35,12 +36,12 @@ function setVoiceState(label=''){
   document.body.dataset.voiceState=normalized.includes('speak')?'speaking':normalized.includes('listen')?'listening':normalized.includes('ending')?'ending':active?'listening':'idle';
 }
 function normalizeSpeechLanguage(lang){lang=String(lang||'english').toLowerCase();if(lang==='ml'||lang==='malayalam')return 'malayalam';if(lang==='ar'||lang==='arabic')return 'arabic';return 'english';}
-function unlockNotificationAudio(){try{notificationAudio ||= new AudioContext();notificationAudio.resume?.();}catch{} if('speechSynthesis'in window){speechSynthesis.getVoices();speechSynthesis.resume?.();}}
+const acceptanceVoice=new PatientNotification({onError:()=>toast('Your request has been accepted. Tap the screen to enable the voice notification.')});
+function unlockNotificationAudio(){void acceptanceVoice.unlock();}
 function speechVoice(lang){if(!('speechSynthesis'in window))return null;const voices=speechSynthesis.getVoices();if(lang==='english')return voices.find(v=>/^en-IN/i.test(v.lang)&&/female|woman|google/i.test(v.name))||voices.find(v=>/^en-IN/i.test(v.lang))||voices.find(v=>/^en-/i.test(v.lang)&&/female|woman|google/i.test(v.name))||voices.find(v=>/^en-/i.test(v.lang))||null;return voices.find(v=>lang==='malayalam'?/^ml/i.test(v.lang):/^ar/i.test(v.lang))||null;}
 function speak(text,lang='english',force=false){if((!force&&!store.demo)||!('speechSynthesis'in window))return;lang=normalizeSpeechLanguage(lang);speechSynthesis.cancel();speechSynthesis.resume?.();const utterance=new SpeechSynthesisUtterance(text);const voice=speechVoice(lang);if(voice)utterance.voice=voice;utterance.rate=.9;utterance.volume=1;utterance.lang=voice?.lang||(lang==='malayalam'?'ml-IN':lang==='arabic'?'ar-SA':'en-US');utterance.onstart=()=>setVoiceState('speaking');utterance.onend=()=>setVoiceState(active?'listening':'idle');utterance.onerror=()=>setVoiceState(active?'listening':'idle');speechSynthesis.speak(utterance);setTimeout(()=>{if(!speechSynthesis.speaking&&!speechSynthesis.pending){speechSynthesis.cancel();speechSynthesis.speak(utterance);}},500);}
-function acknowledgementMessage(){return 'The request has been accepted.';}
-function playNotificationTone(){try{unlockNotificationAudio();if(!notificationAudio)return;const now=notificationAudio.currentTime;[660,880].forEach((frequency,index)=>{const oscillator=notificationAudio.createOscillator(),gain=notificationAudio.createGain();oscillator.connect(gain);gain.connect(notificationAudio.destination);oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.001,now+index*.16);gain.gain.exponentialRampToValueAtTime(.12,now+index*.16+.02);gain.gain.exponentialRampToValueAtTime(.001,now+index*.16+.18);oscillator.start(now+index*.16);oscillator.stop(now+index*.16+.2);});}catch{}}
-function speakAcknowledgement(){unlockNotificationAudio();playNotificationTone();setTimeout(()=>speak(acknowledgementMessage(),'english',true),280);}
+function acknowledgementMessage(){return 'Your request has been accepted.';}
+function speakAcknowledgement(){acceptanceVoice.play();}
 function isNightBySettings(){if(settings.display==='day')return false;if(settings.display==='night')return true;const hour=new Date().getHours(),start=Number(settings.nightStart??18),end=Number(settings.nightEnd??7);return start<end?hour>=start&&hour<end:hour>=start||hour<end;}
 function updateTheme(){const now=new Date(),night=isNightBySettings(),time=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});document.body.dataset.theme=night?'night':'day';$('patient-time').textContent=time.replace(/\s?[AP]M$/i,'');$('patient-period').textContent=time.match(/AM|PM/i)?.[0]||'';$('patient-date').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});$('display-mode').textContent=(settings.display==='auto'?'☼ Auto · ':'')+(night?'Night':'Day');}
 function syncSettingsToUI(){
@@ -112,7 +113,7 @@ let assignedIdentity=settings.assignedIdentity||'';
 const initialize=setupAccount(store,profile=>{
   const identity=profile?`${profile.uid||'demo'}:${profile.room}`:'';
   if(!profile||(assignedIdentity&&assignedIdentity!==identity)){
-    end();requestState.clear();requestLoaded=false;
+    end();acceptanceVoice.stop();requestState.clear();requestLoaded=false;
     if(profile)settings=saveTabletSettings({...settings,patientName:'',uhid:''});
   }
   if(profile){assignedIdentity=identity;settings=saveTabletSettings({...settings,assignedIdentity:identity});}
@@ -123,7 +124,7 @@ const initialize=setupAccount(store,profile=>{
 $('login-form').addEventListener('submit',event=>{if(store.profile&&$('new-pin').value&&$('new-pin').value!==$('confirm-pin').value){event.preventDefault();event.stopImmediatePropagation();$('login-error').textContent='New PIN does not match.';return;}if(store.profile&&$('new-pin').value)settings.pin=$('new-pin').value;settings={...settings,ward:$('ward-unit').value.trim()||'Ward',patientName:$('patient-name').value.trim(),uhid:$('patient-uhid').value.trim(),language:$('setting-language').value,display:$('setting-display').value,nightStart:$('night-start').value,nightEnd:$('night-end').value};settings=saveTabletSettings(settings);syncSettingsToUI();},true);
 updateTheme();setInterval(updateTheme,30000);
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';$('start').disabled=true;});
-window.addEventListener('pagehide',end);
+window.addEventListener('pagehide',()=>{end();acceptanceVoice.stop();});
 
 // Tablet kiosk gestures: retain one-finger scrolling inside lists and forms.
 document.addEventListener('touchmove',event=>{if(event.touches.length>1&&event.cancelable)event.preventDefault();},{passive:false});
