@@ -1,7 +1,7 @@
 import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js?v=assignments-20261022';
 import {PatientNotification} from './patient-notification.js?v=recording-20261027';
 import {LiveCompanion} from './voice.js?v=mic-20261019';
-const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings=loadTabletSettings();
+const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings={...loadTabletSettings(),language:'malayalam'};
 const langText={
   auto:{sub:'നഴ്സിനെ വിളിക്കാനോ, ഭക്ഷണം, മുറി വൃത്തിയാക്കൽ, അക്കൗണ്ട്, പരാതികൾ അല്ലെങ്കിൽ അഭ്യർത്ഥനകൾ എന്നിവ അറിയിക്കാനോ ഇവിടെ പറയാം.',help:[],emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call ബട്ടൺ അമർത്തുക.',requests:'നിങ്ങളുടെ ആവശ്യങ്ങൾ'},
   english:{sub:'Speak here to call a nurse, request food, room cleaning, accounts, complaints, or other requests.',help:[],emergency:'For emergencies, press the Nurse Call button.',requests:'Your requests'},
