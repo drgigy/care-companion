@@ -4,6 +4,8 @@ import {initializeApp} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {createAdminHandler} from './admin.js';
+import {authorizeNursing,createNursingRequestHandler} from './nursing.js';
+import {nursingScript,nursingRequestTool,nursingEndTool} from './nursing-script.js';
 import {GoogleGenAI} from '@google/genai';
 import {conversationScript,requestTool,endConversationTool} from './script.js';
 initializeApp();const db=getFirestore();const geminiKey=defineSecret('GEMINI_API_KEY');
@@ -43,3 +45,18 @@ export const liveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInsta
 });
 
 export const masterAdmin=onCall({region:'asia-south1',maxInstances:3},createAdminHandler({db,auth:getAuth(),allowedOrigins:()=>origins.value()}));
+
+const nursingDeps={db,auth:getAuth(),allowedOrigins:()=>origins.value()};
+export const nursingRequest=onCall({region:'asia-south1',maxInstances:10},createNursingRequestHandler(nursingDeps));
+export const nursingLiveToken=onCall({secrets:[geminiKey],region:'asia-south1',maxInstances:10},async request=>{
+  await authorizeNursing(nursingDeps,request);
+  const liveConfig={responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:liveVoice}}},
+    realtimeInputConfig:{activityHandling:'NO_INTERRUPTION',automaticActivityDetection:{disabled:false,startOfSpeechSensitivity:'START_SENSITIVITY_LOW',endOfSpeechSensitivity:'END_SENSITIVITY_LOW',prefixPaddingMs:200,silenceDurationMs:700}},
+    inputAudioTranscription:{},outputAudioTranscription:{},systemInstruction:nursingScript,
+    tools:[{functionDeclarations:[nursingRequestTool,nursingEndTool]}]};
+  try{
+    const ai=new GoogleGenAI({apiKey:geminiKey.value(),httpOptions:{apiVersion:'v1beta'}});
+    const token=await ai.authTokens.create({config:{uses:1,expireTime:new Date(Date.now()+10*60000).toISOString(),newSessionExpireTime:new Date(Date.now()+60000).toISOString(),liveConnectConstraints:{model:liveModel,config:liveConfig}}});
+    return {token:token.name,model:liveModel,liveConfig};
+  }catch{throw new HttpsError('unavailable','The nursing voice service is unavailable. Please try again.');}
+});

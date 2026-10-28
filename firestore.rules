@@ -12,7 +12,7 @@ service cloud.firestore {
       allow create, delete: if false;
     }
     match /requests/{id} {
-      allow read: if enabled() && (assignedStaff(resource.data.ownerUid) || (profile().role == 'room' && resource.data.ownerUid == request.auth.uid && resource.data.room == profile().room));
+      allow read: if enabled() && (assignedStaff(resource.data.ownerUid) || (staff() && ('submittedByUid' in resource.data) && resource.data.submittedByUid == request.auth.uid) || (profile().role == 'room' && resource.data.ownerUid == request.auth.uid && resource.data.room == profile().room));
       allow create: if enabled() && profile().role == 'room'
         && request.resource.data.keys().hasAll(['room','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','acknowledgedAt','acknowledgedByEmployeeId','completedAt','completedByName','completedByEmployeeId'])
         && request.resource.data.keys().hasOnly(['room','ward','patientName','uhid','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','acknowledgedAt','acknowledgedByEmployeeId','completedAt','completedByName','completedByEmployeeId'])
