@@ -16,12 +16,7 @@
     <p id="patient-date">Monday 12 October</p>
   </div>
 </header>
-<nav class="kiosk-languages" id="language-tabs" aria-label="Conversation language">
-  <button type="button" data-language="auto">Auto</button>
-  <button type="button" data-language="english">English</button>
-  <button type="button" data-language="malayalam" class="selected">മലയാളം</button>
-  <button type="button" data-language="arabic">العربية</button>
-</nav>
+
 <main class="patient-main">
   <section class="talk-panel">
     <div class="mic-control">
@@ -43,7 +38,7 @@
 <label>Department<select id="draft-department" required></select></label>
 <label>Request<textarea id="draft-request" required maxlength="500" rows="4"></textarea></label>
 <details><summary>Recorded transcript</summary><p id="draft-transcript"></p></details>
-<input type="hidden" id="draft-language" value="malayalam">
+<input type="hidden" id="draft-language" value="other">
 <div class="draft-actions"><button id="discard" type="button">Discard</button><button id="send" class="primary">Send</button></div>
 </form>
 <div class="talk-copy">
@@ -62,7 +57,7 @@
   <span class="kiosk-brand">Powered by <strong>WOYZ</strong></span>
 </footer>
 </div>
-<div hidden aria-hidden="true"><button id="mobile-language-pill" type="button"><span id="mobile-language-label">Auto</span></button><button id="mobile-menu-button" type="button" aria-expanded="false">Menu</button></div>
+<div hidden aria-hidden="true"><button id="mobile-menu-button" type="button" aria-expanded="false">Menu</button></div>
 <button id="mobile-menu-backdrop" type="button" hidden aria-hidden="true"></button>
 <dialog id="requests-dialog" class="requests-dialog" aria-labelledby="requests-dialog-title">
   <div class="requests-dialog-header"><h2 id="requests-dialog-title">My submitted requests</h2><button id="requests-close" class="requests-close" type="button" aria-label="Close requests">×</button></div>
@@ -75,7 +70,6 @@
 <div id="live-login"><label>Email<input id="email" type="email" autocomplete="username"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label></div>
 <div id="settings-grid" class="settings-grid" hidden>
 <label>Ward / floor<input id="ward-unit" maxlength="40" autocomplete="off" placeholder="e.g. Neuro Ward or Floor 2"></label>
-<label>Conversation language<select id="setting-language"><option value="auto">Auto</option><option value="english">English</option><option value="malayalam">മലയാളം</option><option value="arabic">العربية</option></select></label>
 <label>Display<select id="setting-display"><option value="auto">Auto by time</option><option value="day">Always day</option><option value="night">Always night</option></select></label>
 <label>Night starts<select id="night-start"></select></label><label>Night ends<select id="night-end"></select></label>
 </div><p class="error" id="login-error" role="alert"></p>

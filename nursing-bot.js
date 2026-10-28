@@ -7,12 +7,11 @@ const copy={
   malayalam:{help:'റൂം നമ്പർ, വിഭാഗം, ആവശ്യം എന്നിവ പറയുക. Stop അമർത്തിയ ശേഷം വിവരങ്ങൾ പരിശോധിച്ച് Send അമർത്തുക.',emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call അല്ലെങ്കിൽ ആശുപത്രിയുടെ അടിയന്തര സേവനം ഉപയോഗിക്കുക.',preparing:'തയ്യാറാകുന്നു… മൈക്രോഫോൺ അനുമതി ചോദിച്ചാൽ അനുവദിക്കുക.',connecting:'സഹായിയുമായി ബന്ധിപ്പിക്കുന്നു…',greeting:'സഹായി ഉടൻ സംസാരിക്കും…'},
   arabic:{help:'اذكر رقم الغرفة والقسم والطلب. أوقف التسجيل وراجع التفاصيل ثم أرسل.',emergency:'للحالات الطارئة، استخدم نداء التمريض أو إجراءات الطوارئ في المستشفى.',preparing:'جارٍ الاستعداد… يرجى السماح باستخدام الميكروفون.',connecting:'جارٍ الاتصال بمساعدك…',greeting:'سيتحدث مساعدك إليك بعد قليل…'}
 };
-function text(){return copy[settings.language]||copy.malayalam;}
+function text(){return copy.malayalam;}
 function clock(){const now=new Date(),h=now.getHours(),start=Number(settings.nightStart),end=Number(settings.nightEnd),night=settings.display==='night'||(settings.display==='auto'&&(start<end?h>=start&&h<end:h>=start||h<end));document.body.dataset.theme=night?'night':'day';const time=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});$('patient-time').textContent=time.replace(/\s?[AP]M$/i,'');$('patient-period').textContent=time.match(/AM|PM/)?.[0]||'';$('patient-date').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
 function syncUI(){
   $('header-ward').textContent=settings.ward||'Ward / floor optional';$('tap-subtitle').textContent=text().help;$('emergency-note').textContent=text().emergency;$('helper-card').hidden=true;
-  document.querySelectorAll('#language-tabs button').forEach(b=>b.classList.toggle('selected',b.dataset.language===settings.language));
-  $('ward-unit').value=settings.ward;for(const key of ['language','display'])$('setting-'+key).value=settings[key];$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;
+  $('ward-unit').value=settings.ward;for(const key of ['display'])$('setting-'+key).value=settings[key];$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;
   const signed=!!store.profile;$('live-login').hidden=signed||store.demo;$('settings-grid').hidden=!signed;$('email').required=!signed&&!store.demo;$('password').required=!signed&&!store.demo;$('ward-unit').required=false;$('logout').hidden=!signed;$('settings-submit').textContent=signed?'Save settings':'Sign in';$('login-help').textContent=signed?'Submit requests for dictated rooms. Your dashboard room assignments do not restrict submissions.':'Use your existing staff account. Room/tablet accounts cannot use this page.';clock();
 }
 function status(message){$('voice-startup').hidden=false;$('voice-startup').textContent=message;}
@@ -31,9 +30,9 @@ async function start(){
 async function transcribe(){
  const run=attempt;$('discard-audio').hidden=false;$('processing').hidden=false;$('retry-transcription').hidden=true;status('Processing recording…');$('start').disabled=true;
  try{
-  const result=store.demo?{room:'1234',category:'housekeeping',summary:'Please clean the bathroom.',patientLanguage:'malayalam',transcript:'1234 റൂമിലെ ബാത്ത്റൂം വൃത്തിയാക്കണം.'}:(await store.call('nursingTranscribe',{...await audioPayload(pendingAudio),language:settings.language})).data;
+  const result=store.demo?{room:'1234',category:'housekeeping',summary:'Please clean the bathroom.',patientLanguage:'malayalam',transcript:'1234 റൂമിലെ ബാത്ത്റൂം വൃത്തിയാക്കണം.'}:(await store.call('nursingTranscribe',await audioPayload(pendingAudio))).data;
   if(run!==attempt)return;
-  $('draft-room').value=result.room||'';$('draft-department').value=result.category||'';$('draft-request').value=result.summary||'';$('draft-transcript').textContent=result.transcript||'';$('draft-language').value=result.patientLanguage||'malayalam';
+  $('draft-room').value=result.room||'';$('draft-department').value=result.category||'';$('draft-request').value=result.summary||'';$('draft-transcript').textContent=result.transcript||'';$('draft-language').value=result.patientLanguage||'other';
   draftId=crypto.randomUUID();sendPayload=null;$('draft-form').hidden=false;document.body.classList.add('reviewing');$('discard-audio').hidden=true;status(store.demo?'MOCK transcription — review the sample fields.':'Review the room, department and request before sending.');$('draft-room').focus();pendingAudio=null;live?.cancel();live=null;
  }catch(error){if(run===attempt){status(error.message+' Your recording is kept for retry.');$('retry-transcription').hidden=false;}}
  finally{if(run===attempt){$('processing').hidden=true;$('start').disabled=false;}}
@@ -61,11 +60,10 @@ $('draft-form').onsubmit=async event=>{
 $('account').onclick=()=>{if(sendBusy)return;if(active)end();$('login-error').textContent='';syncUI();$('login-dialog').showModal();};$('close-login').onclick=()=>$('login-dialog').close();
 $('login-form').onsubmit=async event=>{event.preventDefault();$('login-error').textContent='';$('settings-submit').disabled=true;try{
   if(!store.profile)await store.login($('email').value.trim(),$('password').value);
-  else{const ward=$('ward-unit').value.trim();if(ward.length>40)throw Error('Enter a ward or floor of up to 40 characters.');settings=saveNursingSettings({...settings,ward,language:$('setting-language').value,display:$('setting-display').value,nightStart:$('night-start').value,nightEnd:$('night-end').value});syncUI();$('login-dialog').close();toast('Nursing settings saved');}
+  else{const ward=$('ward-unit').value.trim();if(ward.length>40)throw Error('Enter a ward or floor of up to 40 characters.');settings=saveNursingSettings({...settings,ward,display:$('setting-display').value,nightStart:$('night-start').value,nightEnd:$('night-end').value});syncUI();$('login-dialog').close();toast('Nursing settings saved');}
   $('password').value='';
 }catch(error){$('login-error').textContent=error.message;}finally{$('settings-submit').disabled=false;}};
 $('logout').onclick=async()=>{if(sendBusy)return;end();try{await store.logout();}catch(error){toast(error.message);}};
-document.querySelectorAll('#language-tabs button').forEach(b=>b.onclick=()=>{settings=saveNursingSettings({...settings,language:b.dataset.language});syncUI();});
 $('staff').onclick=()=>{if(sendBusy)return;end();window.location.href='dashboard.html';};
 $('requests-button').onclick=()=>$('requests-dialog').showModal();$('requests-close').onclick=()=>$('requests-dialog').close();
 const hours=Array.from({length:24},(_,h)=>`<option value="${h}">${String(h).padStart(2,'0')}:00</option>`).join('');$('night-start').innerHTML=hours;$('night-end').innerHTML=hours;

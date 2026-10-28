@@ -1,8 +1,9 @@
 import {assertLocalSafe} from './access.js';
 import {config} from './config.js';
 export const NURSING_SETTINGS_KEY='care-companion-nursing-settings-v1';
-export function loadNursingSettings(){try{return {ward:'',display:'auto',nightStart:'18',nightEnd:'7',...JSON.parse(localStorage.getItem(NURSING_SETTINGS_KEY)||'{}'),language:'malayalam'};}catch{return {ward:'',language:'malayalam',display:'auto',nightStart:'18',nightEnd:'7'};}}
-export function saveNursingSettings(settings){localStorage.setItem(NURSING_SETTINGS_KEY,JSON.stringify(settings));return settings;}
+const nursingDefaults={ward:'',display:'auto',nightStart:'18',nightEnd:'7'};
+export function loadNursingSettings(){try{const {language,...saved}=JSON.parse(localStorage.getItem(NURSING_SETTINGS_KEY)||'{}');return {...nursingDefaults,...saved};}catch{return {...nursingDefaults};}}
+export function saveNursingSettings(settings){const {language,...saved}=settings;localStorage.setItem(NURSING_SETTINGS_KEY,JSON.stringify(saved));return saved;}
 export class NursingStore {
   constructor(){this.demo=config.mode==='demo';this.profile=null;this.items=[];this.listeners=[];this.epoch=0;}
   subscribe(fn){this.listeners.push(fn);fn(this.items);}

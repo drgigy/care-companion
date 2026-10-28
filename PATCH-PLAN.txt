@@ -19,6 +19,9 @@ Safety boundary
 Implemented
 - Mobile nursing record/stop/review/send/discard flow; Malayalam, English, Arabic
   and mixed-speech extraction instructions; optional ward; editable room/department/request.
+- Nursing language bar and language setting removed. Transcription automatically
+  detects the spoken language; no selected-language hint is sent. Patient language
+  controls remain unchanged. Existing nursing language preferences are ignored.
 - Browser MediaRecorder with permission handling, 120-second limit, track cleanup,
   6 MiB upload cap, processing indicator, retry and idempotent request submission.
 - nursingTranscribe callable authenticates enabled Staff, validates origin/audio,
