@@ -6,6 +6,7 @@ for source_file in *.js functions/*.js tests/*.mjs; do
   node --check "$source_file"
 done
 node tests/patient-unchanged.mjs
+node tests/tablet-settings.mjs
 node tests/offline.mjs
 node tests/admin.mjs
 node tests/patch.mjs

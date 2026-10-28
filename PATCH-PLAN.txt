@@ -4,9 +4,12 @@ Branch: patch/mobile-nursing-access-20261029
 
 Safety boundary
 - No push, Firebase deployment, live data read/write, account migration or deletion was performed during preparation.
-- Patient index.html, patient.js, styles.css, shared.js, voice.js, mic-worklet.js,
-  config.js, patient-notification.js, functions/script.js and liveToken function
-  are unchanged. tests/patient-unchanged.mjs verifies this.
+- Patient conversation, request handling, voice backend and accounts stay unchanged.
+  User authorised narrow local settings fixes on 29 October: legible sign-out,
+  read-only centrally assigned room, and saving ward/device settings only after
+  PIN unlock and successful validation. Ward remains device-local.
+  tests/patient-unchanged.mjs protects unrelated patient logic.
+- Nursing instructions are English; emergency banner and dashboard shortcut removed.
 - New staff-store.js isolates dashboard changes from patient code.
 - Preview ONLY through: python3 tools/mock-preview.py
   Then http://127.0.0.1:8879/tools/mock.html or /tools/mobile.html.

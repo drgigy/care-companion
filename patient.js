@@ -1,4 +1,4 @@
-import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js?v=assignments-20261022';
+import {CareStore,categories,statuses,$,toast,escapeHTML,guessCategory,setupAccount,loadTabletSettings,saveTabletSettings} from './shared.js?v=settings-fix-20261029';
 import {PatientNotification} from './patient-notification.js?v=recording-20261027';
 import {LiveCompanion} from './voice.js?v=mic-20261019';
 const store=new CareStore('patient');let active=false,live=null,starting=false,startAttempt=0,autoEndTimer=null,requestLoaded=false,requestState=new Map(),selectedCompletionId=null,settings={...loadTabletSettings(),language:'malayalam'};
@@ -120,8 +120,12 @@ const initialize=setupAccount(store,profile=>{
   if(profile&&!store.demo)warmVoice();
   fillSettings();$('start').disabled=!profile;
   if(!profile)$('patient-requests').replaceChildren();else store.emit();
-});
-$('login-form').addEventListener('submit',event=>{if(store.profile&&$('new-pin').value&&$('new-pin').value!==$('confirm-pin').value){event.preventDefault();event.stopImmediatePropagation();$('login-error').textContent='New PIN does not match.';return;}if(store.profile&&$('new-pin').value)settings.pin=$('new-pin').value;settings={...settings,ward:$('ward-unit').value.trim()||'Ward',patientName:$('patient-name').value.trim(),uhid:$('patient-uhid').value.trim(),language:$('setting-language').value,display:$('setting-display').value,nightStart:$('night-start').value,nightEnd:$('night-end').value};settings=saveTabletSettings(settings);syncSettingsToUI();},true);
+},{prepareSettingsSave:()=>{
+  const newPin=$('new-pin').value;
+  if(newPin&&newPin!==$('confirm-pin').value)throw Error('New PIN does not match.');
+  const next={...settings,ward:$('ward-unit').value.trim()||'Ward',patientName:$('patient-name').value.trim(),uhid:$('patient-uhid').value.trim(),language:$('setting-language').value,display:$('setting-display').value,nightStart:$('night-start').value,nightEnd:$('night-end').value,...(newPin?{pin:newPin}:{})};
+  return ()=>{settings=saveTabletSettings(next);syncSettingsToUI();};
+}});
 updateTheme();setInterval(updateTheme,30000);
 initialize().catch(error=>{toast(error.message);$('connection').textContent='Setup error';$('start').disabled=true;});
 window.addEventListener('pagehide',()=>{end();acceptanceVoice.stop();});

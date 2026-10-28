@@ -2,15 +2,9 @@ import {categories,statuses,$,toast,escapeHTML} from './shared.js?v=assignments-
 import {NursingStore,loadNursingSettings,saveNursingSettings} from './nursing-store.js?v=patch-20261029';
 import {NursingRecorder,audioPayload,validateDraft} from './nursing-recorder.js';
 const store=new NursingStore();let settings=loadNursingSettings(),live=null,active=false,starting=false,attempt=0,draftId=null,sendBusy=false,pendingAudio=null,sendPayload=null;
-const copy={
-  english:{help:'Say the room number, department and request. Stop, review the fields, then Send.',emergency:'For emergencies, use the hospital’s Nurse Call or emergency procedure.',preparing:'Getting ready… Please allow microphone access if asked.',connecting:'Connecting to your companion…',greeting:'Your companion will greet you shortly…'},
-  malayalam:{help:'റൂം നമ്പർ, വിഭാഗം, ആവശ്യം എന്നിവ പറയുക. Stop അമർത്തിയ ശേഷം വിവരങ്ങൾ പരിശോധിച്ച് Send അമർത്തുക.',emergency:'അടിയന്തര സാഹചര്യങ്ങളിൽ Nurse Call അല്ലെങ്കിൽ ആശുപത്രിയുടെ അടിയന്തര സേവനം ഉപയോഗിക്കുക.',preparing:'തയ്യാറാകുന്നു… മൈക്രോഫോൺ അനുമതി ചോദിച്ചാൽ അനുവദിക്കുക.',connecting:'സഹായിയുമായി ബന്ധിപ്പിക്കുന്നു…',greeting:'സഹായി ഉടൻ സംസാരിക്കും…'},
-  arabic:{help:'اذكر رقم الغرفة والقسم والطلب. أوقف التسجيل وراجع التفاصيل ثم أرسل.',emergency:'للحالات الطارئة، استخدم نداء التمريض أو إجراءات الطوارئ في المستشفى.',preparing:'جارٍ الاستعداد… يرجى السماح باستخدام الميكروفون.',connecting:'جارٍ الاتصال بمساعدك…',greeting:'سيتحدث مساعدك إليك بعد قليل…'}
-};
-function text(){return copy.malayalam;}
 function clock(){const now=new Date(),h=now.getHours(),start=Number(settings.nightStart),end=Number(settings.nightEnd),night=settings.display==='night'||(settings.display==='auto'&&(start<end?h>=start&&h<end:h>=start||h<end));document.body.dataset.theme=night?'night':'day';const time=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});$('patient-time').textContent=time.replace(/\s?[AP]M$/i,'');$('patient-period').textContent=time.match(/AM|PM/)?.[0]||'';$('patient-date').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
 function syncUI(){
-  $('header-ward').textContent=settings.ward||'Ward / floor optional';$('tap-subtitle').textContent=text().help;$('emergency-note').textContent=text().emergency;$('helper-card').hidden=true;
+  $('header-ward').textContent=settings.ward||'Ward / floor optional';$('tap-subtitle').textContent='Say the room number, department and request in any language. Press Stop, review the details, then Send.';$('helper-card').hidden=true;
   $('ward-unit').value=settings.ward;for(const key of ['display'])$('setting-'+key).value=settings[key];$('night-start').value=settings.nightStart;$('night-end').value=settings.nightEnd;
   const signed=!!store.profile;$('live-login').hidden=signed||store.demo;$('settings-grid').hidden=!signed;$('email').required=!signed&&!store.demo;$('password').required=!signed&&!store.demo;$('ward-unit').required=false;$('logout').hidden=!signed;$('settings-submit').textContent=signed?'Save settings':'Sign in';$('login-help').textContent=signed?'Submit requests for dictated rooms. Your dashboard room assignments do not restrict submissions.':'Use your existing staff account. Room/tablet accounts cannot use this page.';clock();
 }
@@ -64,7 +58,6 @@ $('login-form').onsubmit=async event=>{event.preventDefault();$('login-error').t
   $('password').value='';
 }catch(error){$('login-error').textContent=error.message;}finally{$('settings-submit').disabled=false;}};
 $('logout').onclick=async()=>{if(sendBusy)return;end();try{await store.logout();}catch(error){toast(error.message);}};
-$('staff').onclick=()=>{if(sendBusy)return;end();window.location.href='dashboard.html';};
 $('requests-button').onclick=()=>$('requests-dialog').showModal();$('requests-close').onclick=()=>$('requests-dialog').close();
 const hours=Array.from({length:24},(_,h)=>`<option value="${h}">${String(h).padStart(2,'0')}:00</option>`).join('');$('night-start').innerHTML=hours;$('night-end').innerHTML=hours;
 store.subscribe(rows=>{const today=new Date();today.setHours(0,0,0,0);const current=rows.filter(r=>r.createdAt>=today.getTime());$('requests-count').textContent=String(current.length);$('requests-count').hidden=!current.length;$('requests-empty').hidden=!!current.length;$('requests-empty').textContent='No requests submitted today.';$('patient-requests').innerHTML=current.map(r=>`<article class="patient-request-card"><b class="request-icon">${escapeHTML(categories[r.category]?.icon||'!')}</b><div><strong>Room ${escapeHTML(r.room)} · ${escapeHTML(r.summary)}</strong><small>${escapeHTML(r.ward||'')} · ${escapeHTML(categories[r.category]?.label||'Request')}</small></div><span class="status ${escapeHTML(r.status)}">${escapeHTML(statuses[r.status]||r.status)}</span></article>`).join('');});

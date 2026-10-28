@@ -506,3 +506,6 @@ body[data-page=patient].calm-kiosk .mic-control .voice-startup{flex:none;width:1
 @media(max-height:650px){body[data-page=patient].calm-kiosk .talk-panel{grid-template-rows:minmax(120px,1fr) auto auto}.mic-control{gap:10px}}
 
 @media(min-width:761px){.sidebar-collapsed .dashboard-picker{display:none}}
+
+/* Sign-out must remain legible inside dialogs, including night mode. */
+body dialog #logout.text-button{color:#a52a20!important;background:#fff4f2!important;border:1px solid #d88c82!important;font-size:16px!important;min-height:44px;padding:10px 16px!important;}

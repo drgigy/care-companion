@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
 <title>Aster Care companion · Your room</title>
-<link rel="stylesheet" href="styles.css?v=start-stop-20261022">
+<link rel="stylesheet" href="styles.css?v=settings-fix-20261029">
 </head>
 <body class="calm-kiosk" data-page="patient" data-theme="day" data-voice-state="idle">
 <div class="kiosk-shell">
@@ -63,7 +63,7 @@
     <p id="login-help">Sign in once on this device. The room opens automatically after that.</p>
     <label id="settings-pin-label">PIN<input id="settings-pin" type="password" maxlength="8" inputmode="numeric" autocomplete="off"></label>
     <div class="settings-grid" id="settings-grid">
-      <label>Room number<input id="demo-room" maxlength="12" value="201" pattern="[A-Za-z0-9 -]+"></label>
+      <label>Room number <small>Managed by Master Admin</small><input id="demo-room" maxlength="12" value="201" pattern="[A-Za-z0-9 -]+"></label>
       <label>Ward / unit<input id="ward-unit" maxlength="40" value="Neuro Ward"></label>
       <label>Patient name <small>Optional</small><input id="patient-name" maxlength="80" autocomplete="off"></label>
       <label>UHID <small>Optional</small><input id="patient-uhid" maxlength="40" autocomplete="off"></label>
@@ -99,6 +99,6 @@
 <form id="message-form" hidden><input id="message"><button>Send</button></form>
 <button id="mic" hidden></button>
 <div id="session-controls" hidden></div>
-<script type="module" src="patient.js?v=malayalam-20261027"></script>
+<script type="module" src="patient.js?v=settings-fix-20261029-malayalam-20261027"></script>
 </body>
 </html>

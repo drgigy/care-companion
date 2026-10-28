@@ -148,7 +148,7 @@ export class CareStore {
     else {const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status:'completed',updatedAt:db.serverTimestamp(),completedAt:db.serverTimestamp(),completedByName:name,completedByEmployeeId:employeeId});}
   }
 }
-export function setupAccount(store,onProfile) {
+export function setupAccount(store,onProfile,{prepareSettingsSave}={}) {
   let settingsUnlocked=false;
   const syncSettings=()=>{const roomInput=$('demo-room'),roomLabel=$('demo-room-label'),liveLogin=$('live-login'),submit=$('settings-submit')||$('login-form').querySelector('button.primary');
     if(roomInput&&store.profile?.room)roomInput.value=store.profile.room;
@@ -156,7 +156,8 @@ export function setupAccount(store,onProfile) {
       const signedIn=!!store.profile;
       if($('settings-pin-label'))$('settings-pin-label').hidden=!signedIn||settingsUnlocked;
       if($('settings-grid'))$('settings-grid').hidden=!signedIn||!settingsUnlocked;
-      if(roomLabel){roomLabel.hidden=!signedIn||!settingsUnlocked;roomInput.required=signedIn&&settingsUnlocked;roomInput.readOnly=!store.demo;}
+      if(roomLabel)roomLabel.hidden=!signedIn||!settingsUnlocked;
+      if(roomInput){roomInput.required=signedIn&&settingsUnlocked;roomInput.readOnly=!store.demo;roomInput.title=store.demo?'':'Room assignment is managed by Master Admin.';}
       if(liveLogin){liveLogin.hidden=store.demo||signedIn;$('email').required=!store.demo&&!signedIn;$('password').required=!store.demo&&!signedIn;}
       $('logout').hidden=store.demo||!store.profile||!settingsUnlocked;
       if(submit)submit.textContent=signedIn?(settingsUnlocked?'Save settings':'Unlock'):'Sign in';
@@ -169,7 +170,7 @@ export function setupAccount(store,onProfile) {
   $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>((store.page==='patient'&&store.profile)?$('settings-pin'):$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();
   $('login-form').onsubmit=async e=>{e.preventDefault();$('login-error').textContent='';const submit=e.target.querySelector('button.primary');submit.disabled=true;try{
     if(store.page==='patient'&&store.profile&&!settingsUnlocked){if($('settings-pin').value!==(loadTabletSettings().pin||'1234'))throw Error('Incorrect PIN.');settingsUnlocked=true;syncSettings();setTimeout(()=>($('demo-room')||$('email'))?.focus(),50);return;}
-    if(store.page==='patient'&&(store.demo||store.profile))await store.changeRoom($('demo-room')?.value.trim());
+    if(store.page==='patient'&&(store.demo||store.profile)){const room=$('demo-room')?.value.trim();const commit=prepareSettingsSave?.();await store.changeRoom(room);commit?.();}
     else if(!store.demo&&!store.profile)await store.login($('email').value,$('password').value,$('demo-room')?.value.trim());
     $('login-dialog').close();if($('password'))$('password').value='';toast(store.page==='patient'?'Room settings saved':'Signed in');
   }catch(error){$('login-error').textContent=error.message;}finally{submit.disabled=false;syncSettings();}};
