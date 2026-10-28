@@ -1,5 +1,11 @@
+node_modules/
+.env*
+.firebase/
+firebase-debug.log*
+functions/*debug.log
+
+!functions/.env.example
+
+# Also ignore local dependency symlinks used by isolated offline tests.
 node_modules
-.env
-.env.*
-*-debug.log
 __pycache__/
