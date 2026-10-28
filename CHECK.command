@@ -7,6 +7,7 @@ for source_file in *.js functions/*.js tests/*.mjs; do
 done
 node tests/offline.mjs
 node tests/admin.mjs
+node tests/admin-ui.mjs
 node tests/request-alert.mjs
 node tests/dashboard-scope.mjs
 node tests/patient-notification.mjs

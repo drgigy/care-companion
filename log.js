@@ -1,4 +1,4 @@
-import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js?v=nursing-queue-20261028';
+import {CareStore,categories,statuses,$,toast,escapeHTML,setupAccount} from './shared.js?v=nonclinical-20261028';
 const store=new CareStore('log');let items=[];
 const pad=value=>String(value).padStart(2,'0');
 const dateKey=time=>{const date=new Date(time);return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;};

@@ -5,11 +5,11 @@ let client,users=[],nextPage=null,editing=null,operationId=null,busy=false,sessi
 const notice=(message,error=false)=>{$('notice').textContent=message;$('notice').hidden=!message;$('notice').classList.toggle('error',error);};
 function errorText(error){return error.code?.includes('permission-denied')?'This login has no Master Admin access. Ask the project owner to authorise it.':error.message||'The operation failed. Please try again.';}
 function render(){
-  $('count-all').textContent=users.length;for(const role of ['room','staff'])$('count-'+role).textContent=users.filter(u=>u.role===role).length;
+  $('count-all').textContent=users.length;for(const role of ['room','staff'])$('count-'+role).textContent=users.filter(u=>(u.role===role||role==='staff'&&u.role==='nonClinical')).length;
   $('count-disabled').textContent=users.filter(u=>u.disabled).length;
   const query=$('search').value.trim().toLowerCase(),role=$('role-filter').value,access=$('access-filter').value;
   const rows=users.filter(u=>(!query||[u.name,u.email,u.room].some(x=>x.toLowerCase().includes(query)))&&(!role||u.role===role)&&(!access||u.disabled===(access==='disabled')));
-  $('account-rows').innerHTML=rows.map(u=>`<tr><td><strong>${escape(u.name||'Unnamed account')}</strong><small>${escape(u.email||'No email')}</small></td><td>${escape(u.role==='room'?'Room / tablet':u.role==='staff'?'Staff':u.role)}</td><td>${u.role==='staff'?`${u.assignedRoomUids?.length||0} rooms / tablets`:escape(u.room||'—')}</td><td><span class="tag${u.disabled?' disabled':''}">${u.disabled?'Disabled':'Enabled'}</span></td><td>${u.protected?'<span class="protected">Protected account</span>':`<div class="row-actions">${u.role==='staff'?`<button data-action="assign" data-uid="${escape(u.uid)}">Assign rooms / tablets</button>`:''}<button data-action="edit" data-uid="${escape(u.uid)}">Edit</button><button data-action="reset" data-uid="${escape(u.uid)}"${u.disabled?' disabled':''}>Password link</button>${['room','staff'].includes(u.role)?`<button data-action="disable" data-uid="${escape(u.uid)}">${u.disabled?'Enable':'Disable'}</button>`:''}</div>`}</td></tr>`).join('');
+  $('account-rows').innerHTML=rows.map(u=>`<tr><td><strong>${escape(u.name||'Unnamed account')}</strong><small>${escape(u.email||'No email')}</small></td><td>${escape(u.role==='room'?'Room / tablet':u.role==='staff'?'Staff':u.role==='nonClinical'?'Non-clinical staff':u.role)}</td><td>${['staff','nonClinical'].includes(u.role)?`${u.assignedRoomUids?.length||0} rooms / tablets${u.role==='nonClinical'?' · '+(u.assignedStaffUids?.length||0)+' staff':''}`:escape(u.room||'—')}</td><td><span class="tag${u.disabled?' disabled':''}">${u.disabled?'Disabled':'Enabled'}</span></td><td>${u.protected?'<span class="protected">Protected account</span>':`<div class="row-actions">${['staff','nonClinical'].includes(u.role)?`<button data-action="assign" data-uid="${escape(u.uid)}">${u.role==='nonClinical'?'Assign rooms / tablets & staff':'Assign rooms / tablets'}</button>`:''}<button data-action="edit" data-uid="${escape(u.uid)}">Edit</button><button data-action="reset" data-uid="${escape(u.uid)}"${u.disabled?' disabled':''}>Password link</button>${['room','staff','nonClinical'].includes(u.role)?`<button data-action="disable" data-uid="${escape(u.uid)}">${u.disabled?'Enable':'Disable'}</button>`:''}</div>`}</td></tr>`).join('');
   $('empty').hidden=!!rows.length;$('load-more').hidden=!nextPage;$('loaded-note').textContent=`${users.length} accounts loaded${nextPage?' · More accounts available':''}. Filters apply to loaded accounts.`;
 }
 async function load(more=false){
@@ -18,26 +18,28 @@ async function load(more=false){
   users=more?[...users,...result.users.filter(u=>!users.some(old=>old.uid===u.uid))]:result.users;nextPage=result.nextPageToken;
   $('admin-panel').hidden=false;$('sign-in-panel').hidden=true;$('admin-identity').textContent='Signed in as '+result.actor.email;render();notice('');
 }
-function roleFields(){const room=$('user-role').value==='room';$('room-field').hidden=!room;$('user-room').required=room;$('account-help').textContent=room?'This tablet account can submit requests for its assigned room. Reassignments are controlled here.':'A staff account can use the dashboard and request log. After creation, share a password setup link and assign rooms/tablets. Staff see no requests until accounts are assigned.';}
-function openAccount(user=null){editing=user;operationId=crypto.randomUUID();$('account-form').reset();$('user-name').value=user?.name||'';$('user-email').value=user?.email||'';$('user-email').readOnly=!!user;$('user-role').value=['staff','room'].includes(user?.role)?user.role:'staff';$('user-room').value=user?.room||'';$('account-title').textContent=user?'Edit account':'Create account';$('account-save').textContent=user?'Save changes':'Create account';$('account-error').textContent='';roleFields();$('account-dialog').showModal();$('user-name').focus();}
+function roleFields(){const room=$('user-role').value==='room';$('room-field').hidden=!room;$('user-room').required=room;$('account-help').textContent=room?'This tablet account can submit requests for its assigned room. Reassignments are controlled here.':$('user-role').value==='nonClinical'?'Non-clinical staff use the dashboards and request log. Assign room/tablet and nursing staff accounts to control their requests.':'Staff can use the nursing chatbot and dashboards. Room assignments control patient requests; nursing requests are also available.';}
+function openAccount(user=null){editing=user;operationId=crypto.randomUUID();$('account-form').reset();$('user-name').value=user?.name||'';$('user-email').value=user?.email||'';$('user-email').readOnly=!!user;$('user-role').value=['staff','room','nonClinical'].includes(user?.role)?user.role:'staff';$('user-room').value=user?.room||'';$('account-title').textContent=user?'Edit account':'Create account';$('account-save').textContent=user?'Save changes':'Create account';$('account-error').textContent='';roleFields();$('account-dialog').showModal();$('user-name').focus();}
 function renderAssignments(){
   const query=$('assign-search').value.trim().toLowerCase();
   const available=new Set(roomChoices.map(u=>u.uid));
   const choices=[...roomChoices,...[...selectedRoomUids].filter(uid=>!available.has(uid)).map(uid=>({uid,name:'Unavailable room/tablet account',room:'',email:'Remove this selection before saving.',unavailable:true}))];
   const shown=choices.filter(u=>!query||[u.name,u.room,u.email].some(value=>String(value||'').toLowerCase().includes(query)));
-  $('assign-options').innerHTML=shown.map(u=>`<label class="assignment-option"><input type="checkbox" data-room-uid="${escape(u.uid)}"${selectedRoomUids.has(u.uid)?' checked':''}><span><strong>${escape(u.room?'Room '+u.room:u.name)}</strong><small>${escape(u.room?u.name:'')}${u.room&&u.name?' · ':''}${escape(u.email)}</small></span>${u.disabled?'<span class="tag disabled">Disabled</span>':''}</label>`).join('');
+  $('assign-options').innerHTML=shown.map(u=>`<label class="assignment-option"><input type="checkbox" data-room-uid="${escape(u.uid)}"${selectedRoomUids.has(u.uid)?' checked':''}><span><strong>${escape(u.role==='staff'?'Staff · '+u.name:u.room?'Room '+u.room:u.name)}</strong><small>${escape(u.room?u.name:'')}${u.room&&u.name?' · ':''}${escape(u.email)}</small></span>${u.disabled?'<span class="tag disabled">Disabled</span>':''}</label>`).join('');
   $('assign-empty').hidden=!!shown.length;$('assign-count').textContent=`${selectedRoomUids.size} selected`;
 }
 async function openAssignments(user){
-  assignmentTarget=user;selectedRoomUids=new Set(user.assignedRoomUids||[]);roomChoices=[];
+  assignmentTarget=user;selectedRoomUids=new Set([...(user.assignedRoomUids||[]),...(user.assignedStaffUids||[])]);roomChoices=[];
+  $('assign-title').textContent=user.role==='nonClinical'?'Assign rooms / tablets & staff':'Assign rooms / tablets';
+  $('assign-help').textContent=user.role==='nonClinical'?'View and accept requests from selected room/tablet accounts and selected nursing staff accounts. With none selected, no requests are visible.':'Select room/tablet requests for this staff account. Nursing bot requests remain available independently of room assignments.';
   $('assign-search').value='';$('assign-identity').textContent=`${user.name||user.email} · ${user.email}`;$('assign-error').textContent='Loading all room/tablet accounts…';
   $('assign-options').replaceChildren();$('assign-empty').hidden=true;$('assign-count').textContent=`${selectedRoomUids.size} selected`;$('assign-save').disabled=true;$('assign-clear').disabled=true;
   $('assign-dialog').showModal();const version=sessionVersion,opening=++assignmentLoadVersion;let pageToken;
   try{
     do{
-      const result=await client.call({action:'listRooms',...(pageToken?{pageToken}:{})});
+      const result=await client.call({action:user.role==='nonClinical'?'list':'listRooms',...(pageToken?{pageToken}:{})});
       if(version!==sessionVersion||opening!==assignmentLoadVersion||!$('assign-dialog').open)return;
-      roomChoices.push(...result.users.filter(u=>!roomChoices.some(old=>old.uid===u.uid)));pageToken=result.nextPageToken;
+      roomChoices.push(...result.users.filter(u=>(u.role==='room'||user.role==='nonClinical'&&u.role==='staff')&&!roomChoices.some(old=>old.uid===u.uid)));pageToken=result.nextPageToken;
     }while(pageToken);
     roomChoices.sort((a,b)=>a.room.localeCompare(b.room,undefined,{numeric:true})||a.email.localeCompare(b.email));
     renderAssignments();$('assign-error').textContent='';$('assign-save').disabled=false;$('assign-clear').disabled=false;$('assign-search').focus();
@@ -57,8 +59,8 @@ $('assign-form').onsubmit=async event=>{
   event.preventDefault();if(busy||!assignmentTarget)return;
   busy=true;$('assign-save').disabled=true;$('assign-cancel').disabled=true;$('assign-error').textContent='';
   try{
-    await client.call({action:'assignRooms',uid:assignmentTarget.uid,assignedRoomUids:[...selectedRoomUids]});
-    $('assign-dialog').close();await load();notice('Assignments saved. Staff dashboards and request logs now show only requests from the selected room/tablet accounts.');
+    await client.call({action:'assignRooms',uid:assignmentTarget.uid,assignedRoomUids:[...selectedRoomUids].filter(uid=>roomChoices.find(u=>u.uid===uid)?.role!=='staff'),assignedStaffUids:[...selectedRoomUids].filter(uid=>roomChoices.find(u=>u.uid===uid)?.role==='staff')});
+    $('assign-dialog').close();await load();notice('Assignments saved. Non-clinical staff see requests from their selected room/tablet and staff accounts.');
   }catch(error){if($('assign-dialog').open)$('assign-error').textContent=errorText(error);else notice('Refresh the account list to check the saved assignments. '+errorText(error),true);}
   finally{busy=false;$('assign-save').disabled=false;$('assign-cancel').disabled=false;}
 };

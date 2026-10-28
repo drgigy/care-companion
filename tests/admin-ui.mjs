@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+const nodes=new Map(),calls=[];
+const node=id=>{
+ if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:'',open:false,hidden:false,dataset:{},classList:{toggle(){}},addEventListener(){},focus(){},reset(){},replaceChildren(){this.innerHTML='';},showModal(){this.open=true;},close(){this.open=false;}});
+ return nodes.get(id);
+};
+const source=readFileSync(new URL('../master-admin.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
+const accounts=[{uid:'room',role:'room',room:'201',name:'Tablet',email:'room@example.test'},{uid:'nurse',role:'staff',room:'',name:'Nurse',email:'nurse@example.test'},{uid:'other',role:'nonClinical',room:'',name:'Other team',email:'other@example.test'}];
+const client={call:async input=>{calls.push(input);return {users:accounts,actor:{email:'admin@example.test'}};}};
+const context=vm.createContext({document:{getElementById:node},connectAdmin:async()=>{},crypto:{randomUUID:()=> 'test'},clientMock:client,accounts,confirm:()=>true});
+vm.runInContext(source,context);
+vm.runInContext("client=clientMock; users=accounts; render(); openAccount(accounts[2]);",context);
+assert.equal(node('user-role').value,'nonClinical');
+assert.ok(node('account-rows').innerHTML.includes('Non-clinical staff'));
+assert.ok(node('account-rows').innerHTML.includes('Assign rooms / tablets &amp; staff')||node('account-rows').innerHTML.includes('Assign rooms / tablets & staff'));
+await vm.runInContext("openAssignments(accounts[2])",context);
+assert.ok(node('assign-options').innerHTML.includes('data-room-uid="room"'));
+assert.ok(node('assign-options').innerHTML.includes('data-room-uid="nurse"'));
+assert.ok(!node('assign-options').innerHTML.includes('data-room-uid="other"'));
+vm.runInContext("selectedRoomUids=new Set(['room','nurse']);",context);
+await node('assign-form').onsubmit({preventDefault(){}});
+const save=calls.find(c=>c.action==='assignRooms');
+assert.deepEqual([...save.assignedRoomUids],['room']);
+assert.deepEqual([...save.assignedStaffUids],['nurse']);
+console.log('Passed: non-clinical admin role editing, mixed source selection, excluded non-clinical sources and separate assignment payloads.');

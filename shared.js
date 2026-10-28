@@ -36,8 +36,13 @@ export function staffRequestGroups(profile){
   const ids=[...new Set((Array.isArray(profile?.assignedRoomUids)?profile.assignedRoomUids:[]).filter(id=>typeof id==='string'&&id&&id.length<=128&&!id.includes('/')))];
   return Array.from({length:Math.ceil(ids.length/30)},(_,i)=>ids.slice(i*30,(i+1)*30));
 }
+export function dashboardRole(role){return ['staff','nonClinical'].includes(role);}
 export function staffRequestQueries(db,ref,profile){
-  return [...staffRequestGroups(profile).map(ids=>db.query(ref,db.where('ownerUid','in',ids))),db.query(ref,db.where('submittedVia','==','nursing-bot'))];
+  const rooms=staffRequestGroups(profile).map(ids=>db.query(ref,db.where('ownerUid','in',ids)));
+  const nursing=profile?.role==='nonClinical'
+    ?staffRequestGroups({assignedRoomUids:profile.assignedStaffUids}).map(ids=>db.query(ref,db.where('submittedByUid','in',ids),db.where('submittedVia','==','nursing-bot')))
+    :[db.query(ref,db.where('submittedVia','==','nursing-bot'))];
+  return [...rooms,...nursing];
 }
 export function mergeRequestResults(results){return [...new Map([...results.values()].flat().map(row=>[row.id,row])).values()].sort((a,b)=>b.createdAt-a.createdAt);}
 export class CareStore {
@@ -66,7 +71,7 @@ export class CareStore {
           if(!snapshot.exists())throw Error('This account has no room or staff assignment. Ask your administrator.');
           const profile=snapshot.data();const required=this.page==='patient'?'room':'staff';
           if(profile.disabled===true)throw Error('This account is disabled. Ask your administrator.');
-          if(profile.role!==required)throw Error(`This page requires a ${required} account.`);
+          if(required==='room'?profile.role!=='room':!dashboardRole(profile.role))throw Error(`This page requires a ${required} account.`);
           if(required==='room'&&(!profile.room||typeof profile.room!=='string'))throw Error('The account needs a valid room assignment.');
           this.profile={...profile,uid:user.uid};
           let requestVersion=0;
@@ -89,12 +94,12 @@ export class CareStore {
           this.profileUnsubscribe=db.onSnapshot(db.doc(this.db,'profiles',user.uid),snapshot=>{
             if(epoch!==this.authEpoch)return;
             const next=snapshot.exists()?snapshot.data():null;
-            if(!next||next.disabled===true||next.role!==required||(required==='room'&&!next.room)){
+            if(!next||next.disabled===true||(required==='room'?next.role!=='room':!dashboardRole(next.role))||(required==='room'&&!next.room)){
               ++requestVersion;this.unsubscribe?.();this.profile=null;this.items=[];this.emit();
               this.onState(null,Error('Your account access changed. Please contact Master Admin.'));
               auth.signOut(this.auth).catch(()=>{});return;
             }
-            if(this.profile?.room!==next.room||JSON.stringify(this.profile?.assignedRoomUids||[])!==JSON.stringify(next.assignedRoomUids||[])){this.profile={...next,uid:user.uid};this.onState(this.profile);subscribeRequests();}
+            if(this.profile?.role!==next.role||JSON.stringify(this.profile?.assignedStaffUids||[])!==JSON.stringify(next.assignedStaffUids||[])||this.profile?.room!==next.room||JSON.stringify(this.profile?.assignedRoomUids||[])!==JSON.stringify(next.assignedRoomUids||[])){this.profile={...next,uid:user.uid};this.onState(this.profile);subscribeRequests();}
           },error=>{if(epoch===this.authEpoch)this.onState(this.profile,error);});
         }
         this.onState(this.profile);
@@ -130,7 +135,7 @@ export class CareStore {
     return id;
   }
   async update(id,status,employeeId=''){
-    if(this.profile?.role!=='staff')throw Error('Staff access is required.');
+    if(!dashboardRole(this.profile?.role))throw Error('Staff access is required.');
     employeeId=String(employeeId||'').trim();if(!employeeId)throw Error('Enter employee ID.');
     if(this.demo){this.readDemo();const row=this.items.find(r=>r.id===id);if(!row)throw Error('Request no longer exists.');if(!(row.status==='new'&&status==='in-progress'))throw Error('Request status already changed.');row.status=status;row.updatedAt=Date.now();row.acknowledgedAt=row.updatedAt;row.acknowledgedByEmployeeId=employeeId;localStorage.setItem(DEMO_KEY,JSON.stringify(this.items));this.readDemo();}
     else {if(status!=='in-progress')throw Error('Complete the request from the patient room.');const db=this.dbSDK;await db.updateDoc(db.doc(this.db,'requests',id),{status,updatedAt:db.serverTimestamp(),acknowledgedAt:db.serverTimestamp(),acknowledgedByEmployeeId:employeeId});}
@@ -158,7 +163,7 @@ export function setupAccount(store,onProfile) {
       $('login-help').textContent=signedIn?(settingsUnlocked?'Room assignment is managed by Master Admin. Tablet settings and sign out are available here.':'Enter the PIN to manage tablet settings or sign out.'):'Sign in once on this device. The room opens automatically after that.';
       return;
     }
-    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit){submit.hidden=signedIn;submit.textContent='Sign in';}if($('logout'))$('logout').hidden=!signedIn;$('login-help').textContent=signedIn?`You are signed in. ${staffRequestGroups(store.profile).flat().length} room/tablet accounts assigned. Master Admin manages these assignments.`:'Sign in once on this device. The session stays signed in until staff sign out.';}
+    if(!store.demo&&liveLogin){const signedIn=!!store.profile;liveLogin.hidden=signedIn;$('email').required=!signedIn;$('password').required=!signedIn;if(submit){submit.hidden=signedIn;submit.textContent='Sign in';}if($('logout'))$('logout').hidden=!signedIn;$('login-help').textContent=signedIn?`You are signed in. ${staffRequestGroups(store.profile).flat().length} room/tablet accounts assigned. ${store.profile.role==='nonClinical'?(store.profile.assignedStaffUids?.length||0)+' staff accounts assigned. ':''}Master Admin manages these assignments.`:'Sign in once on this device. The session stays signed in until staff sign out.';}
     else if(submit)submit.textContent=store.page==='patient'?'Save room':'Close';
   };
   $('account').onclick=()=>{if(store.page==='patient'){settingsUnlocked=false;if($('settings-pin'))$('settings-pin').value='';}$('login-error').textContent='';syncSettings();$('login-dialog').showModal();setTimeout(()=>((store.page==='patient'&&store.profile)?$('settings-pin'):$('email'))?.focus(),50);};$('close-login').onclick=()=>$('login-dialog').close();

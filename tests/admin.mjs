@@ -47,5 +47,27 @@ records.set('adminAccess/staff',{enabled:true});
 for(const target of ['owner','staff'])for(const action of ['update','setDisabled','resetLink','assignRooms'])await rejects(()=>request({action,uid:target,disabled:true,name:'Changed',role:'staff'}),'permission-denied');
 records.delete('adminAccess/staff');users.get('staff').customClaims={admin:true};await rejects(()=>request({action:'setDisabled',uid:'staff',disabled:true}),'permission-denied');
 const listed=await request({action:'list'});assert.equal(listed.nextPageToken,'next');assert.equal(listed.users[0].protected,true);assert.ok(!JSON.stringify(listed).includes('password'));assert.ok((await request({action:'list',pageToken:'next'})).users.length);
+
+// Non-clinical staff can be assigned both request sources; never gain admin access.
+const nc=await request({...input,email:'housekeeping@example.test',name:'Housekeeping',role:'nonClinical',operationId:'33333333-1234-1234-1234-123456789012'});
+assert.equal(records.get('profiles/'+nc.uid).role,'nonClinical');
+assert.equal(records.get('profiles/'+nc.uid).room,'');
+await rejects(()=>request({action:'list'},nc.uid),'permission-denied');
+await request({action:'assignRooms',uid:nc.uid,assignedRoomUids:['room'],assignedStaffUids:['staff']});
+assert.deepEqual(records.get('profiles/'+nc.uid).assignedRoomUids,['room']);
+assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,['staff']);
+await request({action:'update',uid:nc.uid,role:'nonClinical',name:'Housekeeping team'});
+assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,['staff'],'name edit preserves both assignment types');
+for(const assignedStaffUids of [['room'],['missing'],[nc.uid]])await rejects(()=>request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids}),'failed-precondition');
+for(const assignedStaffUids of [['staff','staff'],['bad/id'],null])await rejects(()=>request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids}),'invalid-argument');
+await request({action:'setDisabled',uid:nc.uid,disabled:true});
+assert.equal(records.get('profiles/'+nc.uid).disabled,true);
+await request({action:'setDisabled',uid:nc.uid,disabled:false});
+await request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids:[]});
+assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,[]);
+await request({action:'assignRooms',uid:nc.uid,assignedRoomUids:['room'],assignedStaffUids:['staff']});
+await request({action:'update',uid:nc.uid,role:'staff',name:'Nurse'});
+assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,[],'role change removes prior source permissions');
+await rejects(()=>request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids:['staff']}),'failed-precondition');
 failEnable=true;await rejects(()=>request({...input,email:'failed@example.test',operationId:'87654321-1234-1234-1234-123456789012'}),'internal');const failed='managed-87654321-1234-1234-1234-123456789012';assert.equal(users.get(failed).disabled,true);assert.equal(records.get('profiles/'+failed).disabled,true,'incomplete accounts must fail closed');
 console.log('Passed: admin authorisation, origin checks, role validation, protected accounts, account creation/retry, reassignment, disable/revocation, password links, audit privacy, staff assignment validation, role transitions and partial failure.');

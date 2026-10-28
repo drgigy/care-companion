@@ -36,6 +36,12 @@ const queries=staffRequestQueries(querySDK,'requests',{assignedRoomUids:['tablet
 assert.deepEqual(queries,[[['ownerUid','in',['tablet201']]],[['submittedVia','==','nursing-bot']]]);
 const oldNursing={id:'old-nursing',createdAt:1},newNursing={id:'new-nursing',createdAt:2};
 assert.deepEqual(mergeRequestResults(new Map([[0,[oldNursing]],[1,[oldNursing,newNursing]]])),[newNursing,oldNursing],'overlapping legacy nursing rows appear once');
+
+const emptyNonClinical={role:'nonClinical',assignedRoomUids:[],assignedStaffUids:[]};
+assert.deepEqual(staffRequestQueries(querySDK,'requests',emptyNonClinical),[],'unassigned non-clinical accounts cannot subscribe to global nursing requests');
+assert.deepEqual(staffRequestQueries(querySDK,'requests',{...emptyNonClinical,assignedRoomUids:['tablet201'],assignedStaffUids:['nurse']}),[[['ownerUid','in',['tablet201']]],[['submittedByUid','in',['nurse']],['submittedVia','==','nursing-bot']]],'both sources are restricted to selected accounts');
+profiles.set('housekeeping',{role:'nonClinical',assignedRoomUids:['tablet201'],assignedStaffUids:['nurse']});
+await reject(req(input,'housekeeping'),'permission-denied');
 // Exercise the real voice handler with fake audio and timers: no live patient data.
 const timers=[];const originalSet=globalThis.setTimeout,originalClear=globalThis.clearTimeout;
 globalThis.setTimeout=(fn,ms)=>{const timer={fn,ms};timers.push(timer);return timer;};globalThis.clearTimeout=t=>{if(t)t.cancelled=true;};
