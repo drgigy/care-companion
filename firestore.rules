@@ -6,13 +6,14 @@ service cloud.firestore {
     function enabled(){return signedIn() && (!('disabled' in profile()) || profile().disabled != true);}
     function staff(){return enabled() && profile().role == 'staff';}
     function assignedStaff(ownerUid){return staff() && ('assignedRoomUids' in profile()) && profile().assignedRoomUids is list && ownerUid in profile().assignedRoomUids;}
+    function nursingQueue(){return staff() && ('submittedVia' in resource.data) && resource.data.submittedVia == 'nursing-bot';}
     match /profiles/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow update: if false;
       allow create, delete: if false;
     }
     match /requests/{id} {
-      allow read: if enabled() && (assignedStaff(resource.data.ownerUid) || (staff() && ('submittedByUid' in resource.data) && resource.data.submittedByUid == request.auth.uid) || (profile().role == 'room' && resource.data.ownerUid == request.auth.uid && resource.data.room == profile().room));
+      allow read: if enabled() && (assignedStaff(resource.data.ownerUid) || nursingQueue() || (staff() && ('submittedByUid' in resource.data) && resource.data.submittedByUid == request.auth.uid) || (profile().role == 'room' && resource.data.ownerUid == request.auth.uid && resource.data.room == profile().room));
       allow create: if enabled() && profile().role == 'room'
         && request.resource.data.keys().hasAll(['room','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','acknowledgedAt','acknowledgedByEmployeeId','completedAt','completedByName','completedByEmployeeId'])
         && request.resource.data.keys().hasOnly(['room','ward','patientName','uhid','category','summary','patientLanguage','status','ownerUid','createdAt','updatedAt','acknowledgedAt','acknowledgedByEmployeeId','completedAt','completedByName','completedByEmployeeId'])
@@ -30,7 +31,7 @@ service cloud.firestore {
         && request.resource.data.completedAt == null
         && request.resource.data.completedByName == null
         && request.resource.data.completedByEmployeeId == null;
-      allow update: if assignedStaff(resource.data.ownerUid)
+      allow update: if (assignedStaff(resource.data.ownerUid) || nursingQueue())
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','acknowledgedAt','acknowledgedByEmployeeId'])
         && request.resource.data.updatedAt == request.time
         && request.resource.data.acknowledgedAt == request.time

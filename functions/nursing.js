@@ -14,7 +14,7 @@ export function nursingInput(data={}){
   const room=typeof data.room==='string'?data.room.trim():'',ward=typeof data.ward==='string'?data.ward.trim():'';
   const summary=typeof data.summary==='string'?data.summary.trim():'';
   if(!/^[A-Za-z0-9][A-Za-z0-9 -]{0,11}$/.test(room))fail('invalid-argument','Please dictate a valid room number.');
-  if(!ward||ward.length>40)fail('invalid-argument','Set a ward or floor of up to 40 characters.');
+  if(ward.length>40)fail('invalid-argument','Set a ward or floor of up to 40 characters.');
   if(!['nursing','food','housekeeping','engineering','ipBilling','insurance','it','guestRelations'].includes(data.category)||!summary||summary.length>500)fail('invalid-argument','A valid department and request are required.');
   if(!['english','malayalam','arabic','other'].includes(data.patientLanguage))fail('invalid-argument','A valid conversation language is required.');
   if(!/^[a-zA-Z0-9-]{8,80}$/.test(data.requestId||''))fail('invalid-argument','A valid request identifier is required.');
@@ -32,13 +32,8 @@ export function createNursingRequestHandler(deps){
         if(old.submittedByUid!==uid||['room','ward','category','summary','patientLanguage'].some(k=>old[k]!==input[k]))fail('already-exists','This request identifier was already used with different details.');
         return {requestId:id,room:old.room,status:'sent'};
       }
-      const matches=await tx.get(db.collection('profiles').where('room','==',input.room));
-      let rooms=matches.docs.filter(d=>d.data().role==='room'&&d.data().disabled!==true);
-      // Ward disambiguation is possible when room profiles include ward metadata.
-      if(rooms.length>1)rooms=rooms.filter(d=>String(d.data().ward||'').trim().toLowerCase()===input.ward.toLowerCase());
-      if(rooms.length!==1)fail('failed-precondition','The room is not configured uniquely. Please check the room and ward with Master Admin; the request was not sent.');
       tx.create(ref,{room:input.room,ward:input.ward,category:input.category,summary:input.summary,patientLanguage:input.patientLanguage,
-        ownerUid:rooms[0].id,submittedByUid:uid,submittedVia:'nursing-bot',patientName:'',uhid:'',status:'new',
+        ownerUid:`nursing:${uid}`,submittedByUid:uid,submittedVia:'nursing-bot',patientName:'',uhid:'',status:'new',
         createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),acknowledgedAt:null,acknowledgedByEmployeeId:null,completedAt:null,completedByName:null,completedByEmployeeId:null});
       return {requestId:id,room:input.room,status:'sent'};
     });

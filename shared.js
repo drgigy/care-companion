@@ -36,6 +36,10 @@ export function staffRequestGroups(profile){
   const ids=[...new Set((Array.isArray(profile?.assignedRoomUids)?profile.assignedRoomUids:[]).filter(id=>typeof id==='string'&&id&&id.length<=128&&!id.includes('/')))];
   return Array.from({length:Math.ceil(ids.length/30)},(_,i)=>ids.slice(i*30,(i+1)*30));
 }
+export function staffRequestQueries(db,ref,profile){
+  return [...staffRequestGroups(profile).map(ids=>db.query(ref,db.where('ownerUid','in',ids))),db.query(ref,db.where('submittedVia','==','nursing-bot'))];
+}
+export function mergeRequestResults(results){return [...new Map([...results.values()].flat().map(row=>[row.id,row])).values()].sort((a,b)=>b.createdAt-a.createdAt);}
 export class CareStore {
   constructor(page) {this.page=page;this.demo=config.mode==='demo';this.profile=null;this.items=[];this.listeners=[];this.unsubscribe=null;this.profileUnsubscribe=null;this.authEpoch=0;this.context={};}
   setContext(context){this.context={...this.context,...context};}
@@ -69,10 +73,10 @@ export class CareStore {
           const subscribeRequests=()=>{
             const version=++requestVersion;this.unsubscribe?.();this.items=[];this.emit();
             const ref=db.collection(this.db,'requests');
-            const queries=required==='room'?[db.query(ref,db.where('ownerUid','==',user.uid),db.where('room','==',this.profile.room))]:staffRequestGroups(this.profile).map(ids=>db.query(ref,db.where('ownerUid','in',ids)));
+            const queries=required==='room'?[db.query(ref,db.where('ownerUid','==',user.uid),db.where('room','==',this.profile.room))]:staffRequestQueries(db,ref,this.profile);
             const results=new Map(),unsubscribers=[];
             this.unsubscribe=()=>unsubscribers.forEach(unsubscribe=>unsubscribe());
-            const publish=()=>{this.items=[...results.values()].flat().sort((a,b)=>b.createdAt-a.createdAt);this.emit();};
+            const publish=()=>{this.items=mergeRequestResults(results);this.emit();};
             for(const [index,q]of queries.entries())unsubscribers.push(db.onSnapshot(q,snapshot=>{
               if(epoch!==this.authEpoch||version!==requestVersion)return;
               results.set(index,snapshot.docs.map(d=>({id:d.id,...d.data(),createdAt:d.data().createdAt?.toMillis?.()||Date.now(),updatedAt:d.data().updatedAt?.toMillis?.()||Date.now(),acknowledgedAt:d.data().acknowledgedAt?.toMillis?.()||null,completedAt:d.data().completedAt?.toMillis?.()||null})));publish();
