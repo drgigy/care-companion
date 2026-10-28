@@ -7,6 +7,7 @@ for source_file in *.js functions/*.js tests/*.mjs; do
 done
 node tests/patient-unchanged.mjs
 node tests/tablet-settings.mjs
+node tests/review-regressions.mjs
 node tests/offline.mjs
 node tests/admin.mjs
 node tests/patch.mjs

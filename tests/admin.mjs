@@ -5,7 +5,11 @@ const snap=path=>({exists:records.has(path),data:()=>records.get(path)});
 const doc=path=>({path,get:async()=>snap(path),set:async(data,options)=>records.set(path,options?.merge?{...records.get(path),...data}:data),update:async data=>{assert.ok(records.has(path));records.set(path,{...records.get(path),...data});}});
 const db={doc,collection:path=>({doc:()=>doc(path+'/'+audits.length),add:async data=>audits.push(data)}),getAll:async(...refs)=>refs.map(ref=>snap(ref.path)),batch:()=>{const writes=[];return {create:(ref,data)=>writes.push([ref,data]),set:(ref,data,options)=>writes.push([ref,data,options]),commit:async()=>{for(const [ref,data,options]of writes){if(ref.path.startsWith('adminAudit/'))audits.push(data);else records.set(ref.path,options?.merge?{...records.get(ref.path),...data}:data);}}};}};
 let transactionTail=Promise.resolve();
-db.runTransaction=fn=>{const run=transactionTail.then(()=>fn({get:async ref=>snap(ref.path),create:(ref,data)=>records.set(ref.path,data),delete:ref=>records.delete(ref.path)}));transactionTail=run.catch(()=>{});return run;};
+db.runTransaction=fn=>{const run=transactionTail.then(async()=>{
+ const writes=[];const result=await fn({get:async ref=>{const data=records.get(ref.path);return {exists:data!==undefined,data:()=>data};},create:(ref,data)=>writes.push(()=>records.set(ref.path,data)),set:(ref,data,options)=>writes.push(()=>records.set(ref.path,options?.merge?{...records.get(ref.path),...data}:data)),delete:ref=>writes.push(()=>records.delete(ref.path))});
+ writes.forEach(write=>write());return result;
+});transactionTail=run.catch(()=>{});return run;};
+
 let failEnable=false;
 const auth={getUsers:async ids=>({users:ids.filter(x=>users.has(x.uid)).map(x=>users.get(x.uid)),notFound:ids.filter(x=>!users.has(x.uid))}),getUser:async uid=>{if(!users.has(uid))throw Object.assign(Error(),{code:'auth/user-not-found'});return {...users.get(uid)};},listUsers:async(size,token)=>{assert.equal(size,50);return {users:[...users.values()].slice(token?2:0,token?undefined:2),pageToken:token?undefined:'next'};},createUser:async data=>{if([...users.values()].some(u=>u.email===data.email))throw Object.assign(Error(),{code:'auth/email-already-exists'});assert.ok(data.password.length>=40);const {password,...safe}=data;users.set(data.uid,{...safe,metadata:{}});return safe;},updateUser:async(uid,data)=>{if(failEnable&&data.disabled===false)throw Error('simulated failure');users.set(uid,{...users.get(uid),...data});},revokeRefreshTokens:async uid=>revoked.push(uid),generatePasswordResetLink:async email=>'https://auth.example.test/reset?secret='+email};
 const handler=createAdminHandler({db,auth,allowedOrigins:()=> 'https://carecompanion.woyz.in'});
@@ -70,3 +74,13 @@ await rejects(()=>request({...deptInput,department:'it',email:'food@example.test
 assert.ok(!records.has('departmentAdmins/it'),'failed Auth creation releases only its own new slot');
 failEnable=true;await rejects(()=>request({...input,email:'failed@example.test',operationId:'87654321-1234-1234-1234-123456789012'}),'internal');const failed='managed-87654321-1234-1234-1234-123456789012';assert.equal(users.get(failed).disabled,true);assert.equal(records.get('profiles/'+failed).disabled,true,'incomplete accounts must fail closed');
 console.log('Passed: admin authorisation, origin checks, role validation, protected accounts, account creation/retry, reassignment, disable/revocation, password links, audit privacy, staff assignment validation, role transitions and partial failure.');
+
+failEnable=false;
+users.set('concurrent-target',{uid:'concurrent-target',email:'concurrent@example.test',metadata:{}});
+records.set('profiles/concurrent-target',{role:'staff',disabled:false});
+const migrations=await Promise.allSettled(['engineering','insurance'].map(department=>request({action:'update',uid:'concurrent-target',name:'Concurrent',role:'departmentAdmin',department})));
+assert.equal(migrations.filter(r=>r.status==='fulfilled').length,1);
+assert.equal(migrations.find(r=>r.status==='rejected').reason.code,'failed-precondition');
+const slots=[...records].filter(([k,v])=>k.startsWith('departmentAdmins/')&&v.uid==='concurrent-target');
+assert.equal(slots.length,1);assert.equal(slots[0][1].department,records.get('profiles/concurrent-target').department);
+console.log('Passed: concurrent migrations keep one department slot and matching profile.');

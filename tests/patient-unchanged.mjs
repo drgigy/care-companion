@@ -10,9 +10,9 @@ const patientFunction=s=>s.slice(s.indexOf('export const liveToken='),s.indexOf(
 assert.equal(patientFunction(now),patientFunction(old),'patient voice backend stays unchanged');
 const before=p=>execFileSync('git',['show',base+':'+p],{encoding:'utf8'});
 const patient=readFileSync('patient.js','utf8');
-const flow=s=>s.slice(s.indexOf('const store='),s.indexOf('const initialize=setupAccount'));
+const flow=s=>s.slice(s.indexOf('const store='),s.indexOf('const initialize=setupAccount')).replace(/if\(!rows\.some\(r=>r\.id===selectedCompletionId\)\)selectedCompletionId=rows\[0\]\?\.id\|\|null;/, '').replace(/if\(selectedCompletionId&&!rows\.some\(r=>r\.id===selectedCompletionId\)\)\{selectedCompletionId=null;\$\('staff-employee-id'\)\.value='';\$\('staff-error'\)\.textContent='That request has changed\. Select a request again before completing it\.';\}/, '');
 assert.equal(flow(patient),flow(before('patient.js')),'patient conversation and request flow unchanged');
 const shared=readFileSync('shared.js','utf8');
 assert.equal(shared.split('export function setupAccount')[0],before('shared.js').split('export function setupAccount')[0],'patient storage and request operations unchanged');
 assert.ok(readFileSync('styles.css','utf8').startsWith(before('styles.css')),'existing styles unchanged; signout override appended');
-console.log('Passed: patient conversation, requests, backend and config unchanged; authorised settings-only changes allowed.');
+console.log('Passed: patient conversation, requests, backend and config unchanged; authorised settings and request-selection changes allowed.');

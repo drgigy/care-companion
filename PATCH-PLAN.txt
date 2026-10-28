@@ -9,6 +9,9 @@ Safety boundary
   read-only centrally assigned room, and saving ward/device settings only after
   PIN unlock and successful validation. Ward remains device-local.
   tests/patient-unchanged.mjs protects unrelated patient logic.
+  Review follow-up authorised only the bedside request-selection fix: when a
+  selected request changes remotely, clear selection/employee ID and require
+  explicit reselection instead of silently switching to another request.
 - Nursing instructions are English; emergency banner and dashboard shortcut removed.
 - New staff-store.js isolates dashboard changes from patient code.
 - Preview ONLY through: python3 tools/mock-preview.py
@@ -47,12 +50,23 @@ Implemented
 - Non-clinical is no longer a creatable role. Existing users are not deleted.
 - New asset list is prepared in the workflow file, not pushed or executed.
 
+Review fixes (local only)
+- Dashboard Accept/Complete selection is invalidated on remote status changes;
+  no automatic substitution of another request.
+- Department slot reservation and profile migration commit in one transaction.
+- Recorder failures immediately reset nursing UI, release microphone resources,
+  display an error and allow recording again.
+- Dashboard navigation options reset when changing signed-in accounts.
+
 Local verification
 - ./CHECK.command: syntax, role/page matrix, request query scope, singleton
   contention and handler create/migrate/duplicate checks, transcribe mocks,
   recording cancellation, admin UI controls, category alerts, patient regressions.
 - Local Firestore emulator (demo-aster-admin, 127.0.0.1:8088):
   node tests/admin-rules.mjs
+  node tests/migration-emulator.mjs
+  Also covers actual concurrent migration transactions and failed-write rollback.
+  Offline tests/review-regressions.mjs covers recorder recovery and bedside selection.
   Covers direct reads and queries; staff own vs others; department-only access;
   administrator; disabled/retired roles; spoofed audit UID; accept/complete;
   repeat completion rejection; original patient create/bedside completion.

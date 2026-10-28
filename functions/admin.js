@@ -74,10 +74,18 @@ export function createAdminHandler({db,auth,allowedOrigins}){
       }
       if(action==='update'){
         const target=await targetUser();const input=accountInput({...data,email:target.user.email});
-        const prior=target.profile.data();
-        if(prior?.role==='departmentAdmin'&&(input.role!==prior.role||input.department!==prior.department))fail('failed-precondition','A department account occupies a permanent slot. It cannot be converted to another role or department.');
-        if(input.role==='departmentAdmin')await reserveDepartment(db,input.department,target.uid);
-        await db.doc(`profiles/${target.uid}`).set({name:input.name,role:input.role,room:input.room,department:input.department,...(['staff','nonClinical'].includes(input.role)&&target.profile.data()?.role===input.role?{}:{assignedRoomUids:[],assignedStaffUids:[]}),disabled:!!target.user.disabled,updatedAt:FieldValue.serverTimestamp(),updatedBy:actor.uid},{merge:true});
+        // Reserve the slot and update the role together; concurrent edits retry
+        // against the latest profile instead of leaving an unused reservation.
+        await db.runTransaction(async tx=>{
+          const profileRef=db.doc(`profiles/${target.uid}`),snapshot=await tx.get(profileRef),prior=snapshot.data();
+          if(prior?.role==='departmentAdmin'&&(input.role!==prior.role||input.department!==prior.department))fail('failed-precondition','A department account occupies a permanent slot. It cannot be converted to another role or department.');
+          if(input.role==='departmentAdmin'){
+            const slotRef=db.doc('departmentAdmins/'+input.department),slot=await tx.get(slotRef);
+            if(slot.exists&&slot.data().uid!==target.uid)fail('already-exists','This department already has an administrator. Edit or reset that account instead.');
+            if(!slot.exists)tx.create(slotRef,{uid:target.uid,department:input.department});
+          }
+          tx.set(profileRef,{name:input.name,role:input.role,room:input.room,department:input.department,...(input.role==='staff'&&prior?.role===input.role?{}:{assignedRoomUids:[],assignedStaffUids:[]}),disabled:prior?.disabled===true||!!target.user.disabled,updatedAt:FieldValue.serverTimestamp(),updatedBy:actor.uid},{merge:true});
+        });
         await auth.updateUser(target.uid,{displayName:input.name});
         await audit(target.uid,{role:input.role,room:input.room});
         return {uid:target.uid};

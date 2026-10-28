@@ -15,7 +15,7 @@ async function start(){
  if(active||starting||sendBusy)return;
  if(!store.profile){$('account').click();return;}
  const run=++attempt;starting=true;$('start').disabled=true;status('Allow microphone access…');
- live=new NursingRecorder({onTick:seconds=>status('Listening · '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'))});
+ live=new NursingRecorder({onError:error=>{if(run!==attempt)return;end();status(error.message);},onTick:seconds=>status('Listening · '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'))});
  live.onLimit=()=>void stopRecording();
  try{if(await live.start()&&run===attempt){session(true);status('Listening · 0:00');}}
  catch(error){if(run===attempt)status(error.message);}

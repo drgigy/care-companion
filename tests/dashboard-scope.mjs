@@ -33,6 +33,22 @@ for(const category of [null,...Object.keys(categories)]){
   const accepted=rows.map(r=>!category||r.category===category?{...r,status:'in-progress'}:r);
   subscribe(accepted);
   assert.ok(!alertRows.some(r=>r.status==='new'),`${file}: other categories cannot keep alarm ringing`);
+  if(!category){
+    for(const mode of ['accept','complete']){
+      const initial=mode==='accept'?'new':'in-progress';
+      subscribe(rows);vm.runInContext(`openAck('nursing-${initial}', '${mode}')`,context);
+      node('ack-employee-id').value='EMP42';
+      subscribe(rows.map(r=>r.id===`nursing-${initial}`?{...r,status:mode==='accept'?'in-progress':'completed'}:r));
+      assert.equal(vm.runInContext('ackId',context),null,'must not silently select another request');
+      assert.equal(node('ack-employee-id').value,'');assert.equal(node('ack-save').disabled,true);
+      assert.match(node('ack-error').textContent,/changed/);
+    }
+  }
+  authState({role:'departmentAdmin',department:'food'});
+  assert.ok(!node('dashboard-select').innerHTML.includes('All departments'));
+  authState(null);authState({role:'staff'});
+  assert.ok(node('dashboard-select').innerHTML.includes('All departments'));
+  assert.ok(node('dashboard-select').innerHTML.includes('Housekeeping'));
   authState(null);assert.equal(alertRows.length,0,'sign-out clears alarm');
 }
 console.log('Passed: all eight category pages and all-category dashboard; scoped counts, completed requests, acceptance choices, arrival notifications and alert inputs; sign-out cleanup.');

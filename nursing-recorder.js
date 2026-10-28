@@ -1,6 +1,6 @@
 export class NursingRecorder {
- constructor({mediaDevices=globalThis.navigator?.mediaDevices,Recorder=globalThis.MediaRecorder,onTick=()=>{},maxSeconds=120}={}){
-  Object.assign(this,{mediaDevices,Recorder,onTick,maxSeconds});this.generation=0;
+ constructor({mediaDevices=globalThis.navigator?.mediaDevices,Recorder=globalThis.MediaRecorder,onTick=()=>{},onError=()=>{},maxSeconds=120}={}){
+  Object.assign(this,{mediaDevices,Recorder,onTick,onError,maxSeconds});this.generation=0;
  }
  async start(){
   const run=++this.generation;if(!this.Recorder||!this.mediaDevices)throw Error('Recording is unavailable in this browser. Use a supported browser with microphone access.');
@@ -12,7 +12,7 @@ export class NursingRecorder {
    this.recorder=new this.Recorder(stream,mime?{mimeType:mime}:undefined);
    this.result=new Promise((resolve,reject)=>{
     this.recorder.ondataavailable=e=>{if(e.data.size)this.chunks.push(e.data);};
-    this.recorder.onerror=()=>{this.cleanup();reject(Error('Recording failed. Please try again.'));};
+    this.recorder.onerror=()=>{const error=Error('Recording failed. Please record the request again.');this.cleanup();reject(error);if(run===this.generation)this.onError(error);};
     this.recorder.onstop=()=>{const blob=new Blob(this.chunks,{type:this.recorder.mimeType||mime||'audio/webm'});this.cleanup();resolve(blob);};
    });
    this.result.catch(()=>{});this.recorder.start(250);this.onTick(0);
