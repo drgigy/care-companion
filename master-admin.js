@@ -1,4 +1,4 @@
-import {connectAdmin} from './admin-client.js?v=admin-20261022';
+import {connectAdmin} from './admin-client.js?v=patch-20261029';
 const $=id=>document.getElementById(id);
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let client,users=[],nextPage=null,editing=null,operationId=null,busy=false,sessionVersion=0,assignmentTarget=null,roomChoices=[],selectedRoomUids=new Set(),assignmentLoadVersion=0;
@@ -9,7 +9,7 @@ function render(){
   $('count-disabled').textContent=users.filter(u=>u.disabled).length;
   const query=$('search').value.trim().toLowerCase(),role=$('role-filter').value,access=$('access-filter').value;
   const rows=users.filter(u=>(!query||[u.name,u.email,u.room].some(x=>x.toLowerCase().includes(query)))&&(!role||u.role===role)&&(!access||u.disabled===(access==='disabled')));
-  $('account-rows').innerHTML=rows.map(u=>`<tr><td><strong>${escape(u.name||'Unnamed account')}</strong><small>${escape(u.email||'No email')}</small></td><td>${escape(u.role==='room'?'Room / tablet':u.role==='staff'?'Staff':u.role==='nonClinical'?'Non-clinical staff':u.role)}</td><td>${['staff','nonClinical'].includes(u.role)?`${u.assignedRoomUids?.length||0} rooms / tablets${u.role==='nonClinical'?' · '+(u.assignedStaffUids?.length||0)+' staff':''}`:escape(u.room||'—')}</td><td><span class="tag${u.disabled?' disabled':''}">${u.disabled?'Disabled':'Enabled'}</span></td><td>${u.protected?'<span class="protected">Protected account</span>':`<div class="row-actions">${['staff','nonClinical'].includes(u.role)?`<button data-action="assign" data-uid="${escape(u.uid)}">${u.role==='nonClinical'?'Assign rooms / tablets & staff':'Assign rooms / tablets'}</button>`:''}<button data-action="edit" data-uid="${escape(u.uid)}">Edit</button><button data-action="reset" data-uid="${escape(u.uid)}"${u.disabled?' disabled':''}>Password link</button>${['room','staff','nonClinical'].includes(u.role)?`<button data-action="disable" data-uid="${escape(u.uid)}">${u.disabled?'Enable':'Disable'}</button>`:''}</div>`}</td></tr>`).join('');
+  $('account-rows').innerHTML=rows.map(u=>`<tr><td><strong>${escape(u.name||'Unnamed account')}</strong><small>${escape(u.email||'No email')}</small></td><td>${escape(u.role==='room'?'Room / tablet':u.role==='staff'?'Staff':u.role==='nonClinical'?'Legacy non-clinical (migrate)':u.role==='departmentAdmin'?'Department admin · '+u.department:u.role==='administrator'?'Administrator':u.role)}</td><td>${u.role==='staff'?`${u.assignedRoomUids?.length||0} rooms / tablets${u.role==='nonClinical'?' · '+(u.assignedStaffUids?.length||0)+' staff':''}`:escape(u.room||'—')}</td><td><span class="tag${u.disabled?' disabled':''}">${u.disabled?'Disabled':'Enabled'}</span></td><td>${u.protected?'<span class="protected">Protected account</span>':`<div class="row-actions">${u.role==='staff'?`<button data-action="assign" data-uid="${escape(u.uid)}">${u.role==='nonClinical'?'Assign rooms / tablets & staff':'Assign rooms / tablets'}</button>`:''}<button data-action="edit" data-uid="${escape(u.uid)}">Edit</button><button data-action="reset" data-uid="${escape(u.uid)}"${u.disabled?' disabled':''}>Password link</button>${['room','staff','nonClinical','administrator','departmentAdmin'].includes(u.role)?`<button data-action="disable" data-uid="${escape(u.uid)}">${u.disabled?'Enable':'Disable'}</button>`:''}</div>`}</td></tr>`).join('');
   $('empty').hidden=!!rows.length;$('load-more').hidden=!nextPage;$('loaded-note').textContent=`${users.length} accounts loaded${nextPage?' · More accounts available':''}. Filters apply to loaded accounts.`;
 }
 async function load(more=false){
@@ -18,8 +18,8 @@ async function load(more=false){
   users=more?[...users,...result.users.filter(u=>!users.some(old=>old.uid===u.uid))]:result.users;nextPage=result.nextPageToken;
   $('admin-panel').hidden=false;$('sign-in-panel').hidden=true;$('admin-identity').textContent='Signed in as '+result.actor.email;render();notice('');
 }
-function roleFields(){const room=$('user-role').value==='room';$('room-field').hidden=!room;$('user-room').required=room;$('account-help').textContent=room?'This tablet account can submit requests for its assigned room. Reassignments are controlled here.':$('user-role').value==='nonClinical'?'Non-clinical staff use the dashboards and request log. Assign room/tablet and nursing staff accounts to control their requests.':'Staff can use the nursing chatbot and dashboards. Room assignments control patient requests; nursing requests are also available.';}
-function openAccount(user=null){editing=user;operationId=crypto.randomUUID();$('account-form').reset();$('user-name').value=user?.name||'';$('user-email').value=user?.email||'';$('user-email').readOnly=!!user;$('user-role').value=['staff','room','nonClinical'].includes(user?.role)?user.role:'staff';$('user-room').value=user?.room||'';$('account-title').textContent=user?'Edit account':'Create account';$('account-save').textContent=user?'Save changes':'Create account';$('account-error').textContent='';roleFields();$('account-dialog').showModal();$('user-name').focus();}
+function roleFields(){const department=$('user-role').value==='departmentAdmin';$('department-field').hidden=!department;$('user-department').required=department;const room=$('user-role').value==='room';$('room-field').hidden=!room;$('user-room').required=room;$('account-help').textContent=room?'This tablet account can submit requests for its assigned room. Reassignments are controlled here.':$('user-role').value==='nonClinical'?'Non-clinical staff use the dashboards and request log. Assign room/tablet and nursing staff accounts to control their requests.':department?'One permanent admin account per department. It can see and accept only that department’s requests.':$('user-role').value==='administrator'?'Hospital-wide request access. Does not grant Master Admin privileges.':'Staff see their own requests and assigned rooms/tablets.';}
+function openAccount(user=null){editing=user;operationId=crypto.randomUUID();$('account-form').reset();$('user-name').value=user?.name||'';$('user-email').value=user?.email||'';$('user-email').readOnly=!!user;$('user-role').value=['staff','room','nonClinical','administrator','departmentAdmin'].includes(user?.role)?user.role:'staff';$('user-room').value=user?.room||'';$('user-department').value=user?.department||'';$('account-title').textContent=user?'Edit account':'Create account';$('account-save').textContent=user?'Save changes':'Create account';$('account-error').textContent='';roleFields();$('account-dialog').showModal();$('user-name').focus();}
 function renderAssignments(){
   const query=$('assign-search').value.trim().toLowerCase();
   const available=new Set(roomChoices.map(u=>u.uid));
@@ -31,7 +31,7 @@ function renderAssignments(){
 async function openAssignments(user){
   assignmentTarget=user;selectedRoomUids=new Set([...(user.assignedRoomUids||[]),...(user.assignedStaffUids||[])]);roomChoices=[];
   $('assign-title').textContent=user.role==='nonClinical'?'Assign rooms / tablets & staff':'Assign rooms / tablets';
-  $('assign-help').textContent=user.role==='nonClinical'?'View and accept requests from selected room/tablet accounts and selected nursing staff accounts. With none selected, no requests are visible.':'Select room/tablet requests for this staff account. Nursing bot requests remain available independently of room assignments.';
+  $('assign-help').textContent=user.role==='nonClinical'?'View and accept requests from selected room/tablet accounts and selected nursing staff accounts. With none selected, no requests are visible.':'Staff see requests from these room/tablet accounts plus requests they submit themselves.';
   $('assign-search').value='';$('assign-identity').textContent=`${user.name||user.email} · ${user.email}`;$('assign-error').textContent='Loading all room/tablet accounts…';
   $('assign-options').replaceChildren();$('assign-empty').hidden=true;$('assign-count').textContent=`${selectedRoomUids.size} selected`;$('assign-save').disabled=true;$('assign-clear').disabled=true;
   $('assign-dialog').showModal();const version=sessionVersion,opening=++assignmentLoadVersion;let pageToken;
@@ -60,7 +60,7 @@ $('assign-form').onsubmit=async event=>{
   busy=true;$('assign-save').disabled=true;$('assign-cancel').disabled=true;$('assign-error').textContent='';
   try{
     await client.call({action:'assignRooms',uid:assignmentTarget.uid,assignedRoomUids:[...selectedRoomUids].filter(uid=>roomChoices.find(u=>u.uid===uid)?.role!=='staff'),assignedStaffUids:[...selectedRoomUids].filter(uid=>roomChoices.find(u=>u.uid===uid)?.role==='staff')});
-    $('assign-dialog').close();await load();notice('Assignments saved. Non-clinical staff see requests from their selected room/tablet and staff accounts.');
+    $('assign-dialog').close();await load();notice('Assignments saved. Staff see their own requests and requests from their assigned room/tablet accounts.');
   }catch(error){if($('assign-dialog').open)$('assign-error').textContent=errorText(error);else notice('Refresh the account list to check the saved assignments. '+errorText(error),true);}
   finally{busy=false;$('assign-save').disabled=false;$('assign-cancel').disabled=false;}
 };
@@ -72,7 +72,7 @@ $('account-form').onsubmit=async event=>{
   event.preventDefault();if(busy)return;busy=true;$('account-save').disabled=true;$('account-cancel').disabled=true;$('account-error').textContent='';
   const wasEditing=!!editing;
   try{
-    const result=await client.call({action:wasEditing?'update':'create',uid:editing?.uid,operationId,name:$('user-name').value,email:$('user-email').value,role:$('user-role').value,room:$('user-room').value});
+    const result=await client.call({action:wasEditing?'update':'create',uid:editing?.uid,operationId,name:$('user-name').value,email:$('user-email').value,role:$('user-role').value,department:$('user-department').value,room:$('user-room').value});
     $('account-dialog').close();await load();
     notice(wasEditing?'Account updated. Connected tablets receive the new room assignment.':'Account created. Share the password setup link. For staff, use Assign rooms / tablets to give access to requests.');
     if(!wasEditing){try{await resetLink({uid:result.uid});}catch(error){notice('Account created. Password link unavailable: '+errorText(error),true);}}

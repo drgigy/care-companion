@@ -1,3 +1,4 @@
+import {createTranscriptionHandler} from './transcription.js';
 import {onCall,HttpsError} from 'firebase-functions/v2/https';
 import {defineSecret,defineString} from 'firebase-functions/params';
 import {initializeApp} from 'firebase-admin/app';
@@ -60,3 +61,10 @@ export const nursingLiveToken=onCall({secrets:[geminiKey],region:'asia-south1',m
     return {token:token.name,model:liveModel,liveConfig};
   }catch{throw new HttpsError('unavailable','The nursing voice service is unavailable. Please try again.');}
 });
+
+const transcriptionModel=defineString('NURSING_TRANSCRIPTION_MODEL',{default:'gemini-3.8-flash'});
+export const nursingTranscribe=onCall({secrets:[geminiKey],region:'asia-south1',maxInstances:5,timeoutSeconds:60},createTranscriptionHandler({...nursingDeps,transcribe:async({audio,mimeType,prompt})=>{
+ const ai=new GoogleGenAI({apiKey:geminiKey.value()});
+ const result=await ai.interactions.create({model:transcriptionModel.value(),store:false,system_instruction:prompt,input:[{type:'audio',mime_type:mimeType==='audio/mp4'?'audio/m4a':mimeType,data:audio}],response_mime_type:'application/json',response_format:{type:'object',properties:Object.fromEntries(['room','category','summary','transcript','patientLanguage'].map(key=>[key,{type:'string'}])),required:['room','category','summary','transcript','patientLanguage']}});
+ return result.output_text||(result.outputs||[]).filter(part=>part.type==='text').map(part=>part.text).join('');
+}}));

@@ -1,6 +1,8 @@
+import {assertLocalSafe} from './access.js';
 import {config} from './config.js';
 
 export async function connectAdmin(onSession){
+  assertLocalSafe(config);
   const base='https://www.gstatic.com/firebasejs/12.4.0/';
   const [app,auth,functions]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-functions.js')]);
   const instance=app.initializeApp(config.firebase,'care-companion-master-admin');

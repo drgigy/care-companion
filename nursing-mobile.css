@@ -1,0 +1,19 @@
+.nursing-recorder{overflow:auto!important;height:auto!important;min-height:100dvh}
+.nursing-recorder .kiosk-shell{height:auto!important;min-height:100dvh;max-width:900px;margin:auto}
+.nursing-recorder .patient-main{overflow:visible!important;flex:1}
+.nursing-recorder .talk-panel{width:100%;min-height:0;box-sizing:border-box}
+.nursing-recorder .kiosk-footer{position:static!important;flex-wrap:wrap;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+.nursing-recorder .hero-mic{width:clamp(150px,40vw,260px)!important;height:clamp(150px,40vw,260px)!important}
+.nursing-recorder #draft-form{width:100%;max-width:640px;text-align:left;padding:16px;box-sizing:border-box;border:1px solid #b5cec2;border-radius:20px;background:var(--surface,#fff);color:#20332c}
+.nursing-recorder #draft-form[hidden],.nursing-recorder [hidden]{display:none!important}
+.nursing-recorder #draft-form label{display:block;margin:12px 0;font-weight:700}
+.nursing-recorder input,.nursing-recorder textarea,.nursing-recorder select{font-size:16px;max-width:100%;box-sizing:border-box;width:100%;min-height:48px}
+.nursing-recorder button{min-height:48px}
+.nursing-recorder .draft-actions{display:flex;gap:12px}
+.nursing-recorder .draft-actions button{flex:1}
+.nursing-recorder progress{width:100%;max-width:320px}
+.nursing-recorder .voice-startup{min-height:28px;display:block}
+.nursing-recorder dialog{max-width:calc(100vw - 24px);max-height:85dvh;overflow:auto}
+@media(max-width:600px){.nursing-recorder .patient-topbar{min-height:90px!important;padding:16px!important}.nursing-recorder .room-chip strong{font-size:22px}.nursing-recorder .patient-main{padding:16px!important}.nursing-recorder .tap-subtitle{font-size:17px!important}.nursing-recorder .kiosk-languages{margin:8px 16px!important}.nursing-recorder .kiosk-languages button{font-size:14px!important;padding:8px!important}.nursing-recorder .mic-clock{font-size:24px!important}.nursing-recorder .kiosk-footer{gap:8px!important}}
+
+.nursing-recorder.reviewing .hero-mic{width:100px!important;height:100px!important;border-width:5px!important}.nursing-recorder.reviewing .mic-action-label{font-size:20px!important}

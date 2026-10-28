@@ -25,6 +25,7 @@ jobs:
           cp master-admin.html master-admin.css master-admin.js admin-client.js index.html dashboard.html log.html styles.css config.js shared.js patient.js dashboard.js request-alert.js log.js voice.js mic-worklet.js public/
           cp *-dashboard.html dashboard-scope.js patient-notification.js public/
           cp nursing-bot.html nursing-bot.js nursing-store.js nursing-voice.js public/
+          cp access.js staff-store.js nursing-recorder.js nursing-mobile.css public/
           cp -R assets public/
       - uses: actions/upload-pages-artifact@v3
         with:

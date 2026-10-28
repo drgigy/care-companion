@@ -1,3 +1,4 @@
+import {assertLocalSafe} from './access.js';
 import {config} from './config.js';
 export const NURSING_SETTINGS_KEY='care-companion-nursing-settings-v1';
 export function loadNursingSettings(){try{return {ward:'',display:'auto',nightStart:'18',nightEnd:'7',...JSON.parse(localStorage.getItem(NURSING_SETTINGS_KEY)||'{}'),language:'malayalam'};}catch{return {ward:'',language:'malayalam',display:'auto',nightStart:'18',nightEnd:'7'};}}
@@ -7,8 +8,8 @@ export class NursingStore {
   subscribe(fn){this.listeners.push(fn);fn(this.items);}
   emit(){this.listeners.forEach(fn=>fn(this.items));}
   async init(onState){
-    this.onState=onState;
-    if(this.demo){this.profile={uid:'demo-nurse',role:'staff',assignedRoomUids:[]};onState(this.profile);return;}
+    assertLocalSafe(config);this.onState=onState;
+    if(this.demo){this.profile={uid:'mock-staff',role:'staff',assignedRoomUids:[]};onState(this.profile);return;}
     const base='https://www.gstatic.com/firebasejs/12.4.0/';
     const [app,auth,db,functions]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-firestore.js'),import(base+'firebase-functions.js')]);
     const firebaseApp=app.initializeApp(config.firebase,'care-companion-staff');
@@ -35,7 +36,7 @@ export class NursingStore {
   async logout(){if(this.demo){this.profile=null;this.items=[];this.emit();this.onState(null);}else await this.authSDK.signOut(this.auth);}
   async create(args,requestId){
     if(this.profile?.role!=='staff')throw Error('Sign in with a staff account.');
-    if(this.demo){const row={id:requestId,...args,status:'new',createdAt:Date.now()};if(!this.items.some(r=>r.id===requestId))this.items.unshift(row);this.emit();return {requestId,room:args.room,status:'sent'};}
+    if(this.demo){const row={id:requestId,...args,ownerUid:'nursing:'+this.profile.uid,submittedByUid:this.profile.uid,submittedVia:'nursing-bot',status:'new',createdAt:Date.now()};const all=JSON.parse(localStorage.getItem('care-companion-requests-v1')||'[]');if(!all.some(r=>r.id===requestId))localStorage.setItem('care-companion-requests-v1',JSON.stringify([row,...all]));if(!this.items.some(r=>r.id===requestId))this.items.unshift(row);this.emit();return {requestId,room:args.room,status:'sent'};}
     return (await this.call('nursingRequest',{...args,requestId})).data;
   }
 }

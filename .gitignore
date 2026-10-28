@@ -1,7 +1,5 @@
-node_modules/
-.env*
-.firebase/
-firebase-debug.log*
-functions/*debug.log
-
-!functions/.env.example
+node_modules
+.env
+.env.*
+*-debug.log
+__pycache__/

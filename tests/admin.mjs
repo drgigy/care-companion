@@ -4,6 +4,8 @@ const records=new Map([['adminAccess/owner',{enabled:true}],['profiles/staff',{r
 const snap=path=>({exists:records.has(path),data:()=>records.get(path)});
 const doc=path=>({path,get:async()=>snap(path),set:async(data,options)=>records.set(path,options?.merge?{...records.get(path),...data}:data),update:async data=>{assert.ok(records.has(path));records.set(path,{...records.get(path),...data});}});
 const db={doc,collection:path=>({doc:()=>doc(path+'/'+audits.length),add:async data=>audits.push(data)}),getAll:async(...refs)=>refs.map(ref=>snap(ref.path)),batch:()=>{const writes=[];return {create:(ref,data)=>writes.push([ref,data]),set:(ref,data,options)=>writes.push([ref,data,options]),commit:async()=>{for(const [ref,data,options]of writes){if(ref.path.startsWith('adminAudit/'))audits.push(data);else records.set(ref.path,options?.merge?{...records.get(ref.path),...data}:data);}}};}};
+let transactionTail=Promise.resolve();
+db.runTransaction=fn=>{const run=transactionTail.then(()=>fn({get:async ref=>snap(ref.path),create:(ref,data)=>records.set(ref.path,data),delete:ref=>records.delete(ref.path)}));transactionTail=run.catch(()=>{});return run;};
 let failEnable=false;
 const auth={getUsers:async ids=>({users:ids.filter(x=>users.has(x.uid)).map(x=>users.get(x.uid)),notFound:ids.filter(x=>!users.has(x.uid))}),getUser:async uid=>{if(!users.has(uid))throw Object.assign(Error(),{code:'auth/user-not-found'});return {...users.get(uid)};},listUsers:async(size,token)=>{assert.equal(size,50);return {users:[...users.values()].slice(token?2:0,token?undefined:2),pageToken:token?undefined:'next'};},createUser:async data=>{if([...users.values()].some(u=>u.email===data.email))throw Object.assign(Error(),{code:'auth/email-already-exists'});assert.ok(data.password.length>=40);const {password,...safe}=data;users.set(data.uid,{...safe,metadata:{}});return safe;},updateUser:async(uid,data)=>{if(failEnable&&data.disabled===false)throw Error('simulated failure');users.set(uid,{...users.get(uid),...data});},revokeRefreshTokens:async uid=>revoked.push(uid),generatePasswordResetLink:async email=>'https://auth.example.test/reset?secret='+email};
 const handler=createAdminHandler({db,auth,allowedOrigins:()=> 'https://carecompanion.woyz.in'});
@@ -48,26 +50,23 @@ for(const target of ['owner','staff'])for(const action of ['update','setDisabled
 records.delete('adminAccess/staff');users.get('staff').customClaims={admin:true};await rejects(()=>request({action:'setDisabled',uid:'staff',disabled:true}),'permission-denied');
 const listed=await request({action:'list'});assert.equal(listed.nextPageToken,'next');assert.equal(listed.users[0].protected,true);assert.ok(!JSON.stringify(listed).includes('password'));assert.ok((await request({action:'list',pageToken:'next'})).users.length);
 
-// Non-clinical staff can be assigned both request sources; never gain admin access.
-const nc=await request({...input,email:'housekeeping@example.test',name:'Housekeeping',role:'nonClinical',operationId:'33333333-1234-1234-1234-123456789012'});
-assert.equal(records.get('profiles/'+nc.uid).role,'nonClinical');
-assert.equal(records.get('profiles/'+nc.uid).room,'');
-await rejects(()=>request({action:'list'},nc.uid),'permission-denied');
-await request({action:'assignRooms',uid:nc.uid,assignedRoomUids:['room'],assignedStaffUids:['staff']});
-assert.deepEqual(records.get('profiles/'+nc.uid).assignedRoomUids,['room']);
-assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,['staff']);
-await request({action:'update',uid:nc.uid,role:'nonClinical',name:'Housekeeping team'});
-assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,['staff'],'name edit preserves both assignment types');
-for(const assignedStaffUids of [['room'],['missing'],[nc.uid]])await rejects(()=>request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids}),'failed-precondition');
-for(const assignedStaffUids of [['staff','staff'],['bad/id'],null])await rejects(()=>request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids}),'invalid-argument');
-await request({action:'setDisabled',uid:nc.uid,disabled:true});
-assert.equal(records.get('profiles/'+nc.uid).disabled,true);
-await request({action:'setDisabled',uid:nc.uid,disabled:false});
-await request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids:[]});
-assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,[]);
-await request({action:'assignRooms',uid:nc.uid,assignedRoomUids:['room'],assignedStaffUids:['staff']});
-await request({action:'update',uid:nc.uid,role:'staff',name:'Nurse'});
-assert.deepEqual(records.get('profiles/'+nc.uid).assignedStaffUids,[],'role change removes prior source permissions');
-await rejects(()=>request({action:'assignRooms',uid:nc.uid,assignedRoomUids:[],assignedStaffUids:['staff']}),'failed-precondition');
+
+const deptInput={...input,operationId:'22222222-1234-1234-1234-123456789012',name:'Food department',email:'food@example.test',role:'departmentAdmin',department:'food'};
+const dept=await request(deptInput);
+assert.equal(records.get('departmentAdmins/food').uid,dept.uid);
+const beforeDuplicate=users.size;
+await rejects(()=>request({...deptInput,email:'food2@example.test',operationId:'44444444-1234-1234-1234-123456789012'}),'already-exists');
+assert.equal(users.size,beforeDuplicate,'duplicate department creates no Auth account');
+await request({action:'setDisabled',uid:dept.uid,disabled:true});
+await rejects(()=>request({...deptInput,email:'food3@example.test',operationId:'55555555-1234-1234-1234-123456789012'}),'already-exists');
+await request({action:'setDisabled',uid:dept.uid,disabled:false});
+await rejects(()=>request({action:'update',uid:dept.uid,name:'Changed',role:'departmentAdmin',department:'housekeeping'}),'failed-precondition');
+users.set('legacy-cleaner',{uid:'legacy-cleaner',email:'cleaner@example.test',metadata:{}});
+records.set('profiles/legacy-cleaner',{role:'nonClinical',assignedRoomUids:['room'],assignedStaffUids:['staff']});
+await request({action:'update',uid:'legacy-cleaner',name:'Housekeeping',role:'departmentAdmin',department:'housekeeping'});
+assert.equal(records.get('departmentAdmins/housekeeping').uid,'legacy-cleaner');
+assert.deepEqual(records.get('profiles/legacy-cleaner').assignedRoomUids,[]);
+await rejects(()=>request({...deptInput,department:'it',email:'food@example.test',operationId:'66666666-1234-1234-1234-123456789012'}),'already-exists');
+assert.ok(!records.has('departmentAdmins/it'),'failed Auth creation releases only its own new slot');
 failEnable=true;await rejects(()=>request({...input,email:'failed@example.test',operationId:'87654321-1234-1234-1234-123456789012'}),'internal');const failed='managed-87654321-1234-1234-1234-123456789012';assert.equal(users.get(failed).disabled,true);assert.equal(records.get('profiles/'+failed).disabled,true,'incomplete accounts must fail closed');
 console.log('Passed: admin authorisation, origin checks, role validation, protected accounts, account creation/retry, reassignment, disable/revocation, password links, audit privacy, staff assignment validation, role transitions and partial failure.');

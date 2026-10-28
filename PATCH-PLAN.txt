@@ -1,0 +1,85 @@
+LOCAL PREPARATION ONLY — NO DEPLOYMENT AUTHORISED
+Baseline: 4f78080591724996ef24ca49436df6adef443a63
+Branch: patch/mobile-nursing-access-20261029
+
+Safety boundary
+- No push, Firebase deployment, live data read/write, account migration or deletion was performed during preparation.
+- Patient index.html, patient.js, styles.css, shared.js, voice.js, mic-worklet.js,
+  config.js, patient-notification.js, functions/script.js and liveToken function
+  are unchanged. tests/patient-unchanged.mjs verifies this.
+- New staff-store.js isolates dashboard changes from patient code.
+- Preview ONLY through: python3 tools/mock-preview.py
+  Then http://127.0.0.1:8879/tools/mock.html or /tools/mobile.html.
+  The server substitutes blank Firebase/demo config and fake recorder/admin adapters.
+  CSP blocks external connections. Mock audio is never recorded or uploaded.
+- Do not preview with a general-purpose server using the production config.
+- No production credentials or environment files were copied.
+- functions/node_modules is a local dependency symlink, deliberately not committed.
+
+Implemented
+- Mobile nursing record/stop/review/send/discard flow; Malayalam, English, Arabic
+  and mixed-speech extraction instructions; optional ward; editable room/department/request.
+- Browser MediaRecorder with permission handling, 120-second limit, track cleanup,
+  6 MiB upload cap, processing indicator, retry and idempotent request submission.
+- nursingTranscribe callable authenticates enabled Staff, validates origin/audio,
+  requests structured extraction; no request is created until Send.
+- New transcription uses configurable NURSING_TRANSCRIPTION_MODEL; default
+  gemini-3.8-flash, Interactions API with store:false. No Files API upload or raw
+  audio persistence. API docs consulted: https://ai.google.dev/gemini-api/docs/audio
+- Staff read own submitted requests plus assigned tablet requests.
+- Administrator reads all requests. Department admin reads only its category.
+- dashboard.html rejects department-admin and retired non-clinical accounts;
+  department admin can open its category dashboard and category-scoped request log.
+- Staff/Administrator can use category pages as scoped views.
+- Department admins accept; Staff accept Nursing only and complete their visible
+  accepted requests. Administrator can accept/complete hospital-wide requests.
+- Completion stores employee ID, signed-in UID and server timestamp.
+- Seven department slots, transactionally reserved, remain occupied if disabled.
+  Duplicate creation is rejected before any Auth account is created. Failed Auth
+  creation releases its newly reserved slot. Existing legacy accounts can migrate
+  through Master Admin Edit; their UIDs are preserved.
+- Non-clinical is no longer a creatable role. Existing users are not deleted.
+- New asset list is prepared in the workflow file, not pushed or executed.
+
+Local verification
+- ./CHECK.command: syntax, role/page matrix, request query scope, singleton
+  contention and handler create/migrate/duplicate checks, transcribe mocks,
+  recording cancellation, admin UI controls, category alerts, patient regressions.
+- Local Firestore emulator (demo-aster-admin, 127.0.0.1:8088):
+  node tests/admin-rules.mjs
+  Covers direct reads and queries; staff own vs others; department-only access;
+  administrator; disabled/retired roles; spoofed audit UID; accept/complete;
+  repeat completion rejection; original patient create/bedside completion.
+- Browser: fake Start/Stop, editable room/request, Send confirmation, staff
+  Complete with employee ID. Nursing review inspected at 390 px viewport.
+- Actual microphone hardware, real transcription accuracy/latency and production
+  deployment are deliberately NOT tested. They require the approved rollout.
+
+Proposed rollout AFTER explicit human confirmation
+1. Recheck production revision, account assignments and current open requests.
+   Back up the existing rules, functions settings and profiles to be migrated.
+   Do not alter or recreate the three live room/tablet users.
+2. Confirm final Administrator account and intended department login owners.
+   Preserve all user accounts. Existing proposed migrations:
+   fandb@woyz.in -> departmentAdmin, department food
+   housekeeping@woyz.in -> departmentAdmin, department housekeeping
+   No automatic migration runs on application load or deployment.
+3. Deploy only masterAdmin and new nursingTranscribe backend first; validate
+   configured model/key availability with non-patient sample speech and authorised
+   test Staff account. Do not redeploy liveToken or nursingRequest unnecessarily.
+4. Use Master Admin to reserve/migrate the two existing department slots by editing
+   the existing accounts, preserving UIDs. Create remaining department admins and
+   Administrator only as individually approved. Confirm logins privately.
+5. Coordinate a short staff-dashboard maintenance window. New frontend actions and
+   new rules must roll out together: old dashboard acceptance lacks audit UID and
+   will fail under new rules; old dashboards also query global nursing requests.
+   Existing staff dashboards must refresh and department stations must sign in with
+   their department account. Backend requests from patient tablets continue using
+   unchanged create rules; patient tablet accounts/flow must not be changed.
+6. Publish reviewed frontend commit and deploy new Firestore rules in the window.
+   Verify scoped reads and alerts, department accept, staff complete, Nursing
+   accept/complete, Malayalam dictation and patient-tablet smoke checks.
+7. If a problem occurs, revert frontend/rules/functions to saved versions and restore
+   ONLY migrated profile/slot records from the approved backup. Do not delete or
+   reset requests created while the rollout was in progress. Keep hospital staff
+   informed of any dashboard interruption.

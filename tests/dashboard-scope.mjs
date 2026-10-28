@@ -1,3 +1,4 @@
+import {canAccept,canComplete} from '../access.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
@@ -13,8 +14,8 @@ for(const category of [null,...Object.keys(categories)]){
   if(category)assert.ok(html.includes(`data-category="${category}"`));
   assert.ok(html.includes('id="login-form"')&&html.includes('id="sound"'));
   let subscribe,authState,alertRows=[],alerts=[],nodes=new Map();
-  const node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',innerHTML:'',open:false,value:'',classList:{add(){},remove(){},contains(){return false;},toggle(){}},setAttribute(){},querySelectorAll(){return [];},showModal(){this.open=true;},close(){this.open=false;},focus(){}});return nodes.get(id);};
-  const context=vm.createContext({categories,statuses,escapeHTML,categoryPages,dashboardCategory,scopeRequests,$:node,toast:message=>alerts.push(message),CareStore:class{constructor(){this.profile={assignedRoomUids:['room']};}subscribe(fn){subscribe=fn;}},RequestAlert:class{setRequests(value){alertRows=value;}},setupAccount:(store,fn)=>{authState=fn;return async()=>{};},document:{body:{dataset:{category:category||''},classList:node('body').classList},addEventListener(){}},localStorage:{getItem(){return null;},setItem(){}},window:{addEventListener(){},location:{}},navigator:{},setTimeout(){},setInterval(){}});
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',innerHTML:'',open:false,value:'',classList:{add(){},remove(){},contains(){return false;},toggle(){}},setAttribute(){},querySelectorAll(){return [];},querySelector(){return {textContent:''};},showModal(){this.open=true;},close(){this.open=false;},focus(){}});return nodes.get(id);};
+  const context=vm.createContext({canAccept,canComplete,categories,statuses,escapeHTML,categoryPages,dashboardCategory,scopeRequests,$:node,toast:message=>alerts.push(message),CareStore:class{constructor(){this.profile={role:'administrator',uid:'admin',assignedRoomUids:['room']};}subscribe(fn){subscribe=fn;}},RequestAlert:class{setRequests(value){alertRows=value;}},setupAccount:(store,fn)=>{authState=fn;return async()=>{};},document:{body:{dataset:{category:category||''},classList:node('body').classList},addEventListener(){}},localStorage:{getItem(){return null;},setItem(){}},window:{addEventListener(){},location:{}},navigator:{},setTimeout(){},setInterval(){}});
   vm.runInContext(source,context);
   subscribe(rows);
   const expected=scopeRequests(rows,category);
