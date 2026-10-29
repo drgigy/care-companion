@@ -1,4 +1,4 @@
-LOCAL PREPARATION ONLY — NO DEPLOYMENT AUTHORISED
+ROLLOUT AUTHORISED BY USER — 29 OCTOBER 2026
 Baseline: 4f78080591724996ef24ca49436df6adef443a63
 Branch: patch/mobile-nursing-access-20261029
 
@@ -33,7 +33,7 @@ Implemented
 - nursingTranscribe callable authenticates enabled Staff, validates origin/audio,
   requests structured extraction; no request is created until Send.
 - New transcription uses configurable NURSING_TRANSCRIPTION_MODEL; default
-  gemini-3.8-flash, Interactions API with store:false. No Files API upload or raw
+  gemini-3.8-flash, current Interactions REST API with store:false. No Files API upload or raw
   audio persistence. API docs consulted: https://ai.google.dev/gemini-api/docs/audio
 - Staff read own submitted requests plus assigned tablet requests.
 - Administrator reads all requests. Department admin reads only its category.
@@ -72,8 +72,8 @@ Local verification
   repeat completion rejection; original patient create/bedside completion.
 - Browser: fake Start/Stop, editable room/request, Send confirmation, staff
   Complete with employee ID. Nursing review inspected at 390 px viewport.
-- Actual microphone hardware, real transcription accuracy/latency and production
-  deployment are deliberately NOT tested. They require the approved rollout.
+- Cloud transcription API/key/schema verified using bundled non-patient audio.
+  Physical mobile microphone and clinical dictation accuracy still require user testing.
 
 Proposed rollout AFTER explicit human confirmation
 1. Recheck production revision, account assignments and current open requests.

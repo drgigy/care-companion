@@ -33,3 +33,10 @@ let resolvePermission,stopped=0;
 const recorder=new NursingRecorder({mediaDevices:{getUserMedia:()=>new Promise(r=>resolvePermission=r)},Recorder:class{}});
 const starting=recorder.start();recorder.cancel();resolvePermission({getTracks:()=>[{stop(){stopped++;}}]});assert.equal(await starting,false);assert.equal(stopped,1);
 console.log('Passed: role/page matrix, request scopes, acceptance/completion, retired role denial, singleton contention, Malayalam extraction, auth rejection and recorder cancellation.');
+
+const {transcribeAudio}=await import('../functions/transcription-api.js');
+let sent;
+assert.equal(await transcribeAudio({apiKey:'mock',model:'mock-model',audio:'AAAA',mimeType:'audio/mp4',prompt:'Dictate',fetcher:async(url,options)=>{sent={url,...options,body:JSON.parse(options.body)};return {ok:true,json:async()=>({steps:[{type:'thought',content:[{type:'text',text:'ignore'}]},{type:'model_output',content:[{type:'text',text:'{"room":"1234"}'}]}]})};}}),'{"room":"1234"}');
+assert.equal(sent.body.store,false);assert.equal(sent.body.response_format.type,'text');assert.equal(sent.body.input[0].mime_type,'audio/m4a');assert.equal(sent.headers['Api-Revision'],'2026-05-20');assert.equal(sent.body.response_mime_type,undefined);
+await assert.rejects(()=>transcribeAudio({fetcher:async()=>({ok:false,status:503})}),/503/);
+console.log('Passed: current transcription schema, output extraction, no stored interaction, service error handling.');
